@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Arena Strike 3D — одиночный 3D-шутер от первого лица в браузере: ты против ботов на небольшой карте.">
+  <meta name="theme-color" content="#0e1013">
+  <title>Arena Strike 3D</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-game-state="loading" data-player-dead="false">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="crosshair-temp" class="crosshair-temp"></div>
+  <div id="round-info-temp" class="round-info-temp"></div>
+  <div id="weapon-info-temp" class="weapon-info-temp"></div>
+  <div id="hit-info-temp" class="hit-info-temp"></div>
+
+  <section id="scoreboard" class="scoreboard" hidden aria-label="Таблица счёта">
+    <h2 class="scoreboard-title">Счёт</h2>
+    <p id="scoreboard-info" class="scoreboard-info"></p>
+    <div id="scoreboard-table"></div>
+  </section>
+
+  <section id="buy-menu" class="buy-menu" hidden role="dialog" aria-modal="true" aria-labelledby="buy-title">
+    <h2 id="buy-title" class="buy-title">Закупка</h2>
+    <p id="buy-money" class="buy-money"></p>
+    <div id="buy-items" class="buy-items"></div>
+    <p class="buy-hint">Стрелки — выбор, Enter — купить, B — закрыть, Esc — пауза. Если время заморозки вышло, бой начнётся после закрытия меню.</p>
+    <button id="button-buy-close" class="button" type="button">Закрыть (B)</button>
+  </section>
+
+  <div id="death-overlay" class="death-overlay" role="status">
+    <p class="death-title">Вы погибли</p>
+  </div>
+
+  <div id="fps-counter" class="fps-counter" hidden>FPS: …</div>
+
+  <section id="screen-loading" class="screen screen-opaque" aria-live="polite">
+    <h1 class="screen-title js-game-title">Arena Strike 3D</h1>
+    <div id="loading-progress" class="progress" role="progressbar" aria-label="Прогресс загрузки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="loading-progress-fill" class="progress-fill"></div>
+    </div>
+    <p id="loading-label" class="screen-text">Загрузка…</p>
+  </section>
+
+  <section id="screen-start" class="screen" hidden>
+    <h1 class="screen-title js-game-title">Arena Strike 3D</h1>
+    <p class="screen-text">Одиночный шутер от первого лица: ты против ботов. Матч до 5 побед.</p>
+    <ul class="controls-list">
+      <li><kbd>WASD</kbd>движение</li>
+      <li><kbd>Мышь</kbd>обзор</li>
+      <li><kbd>ЛКМ</kbd>огонь</li>
+      <li><kbd>ПКМ</kbd>зум (снайперка)</li>
+      <li><kbd>R</kbd>перезарядка</li>
+      <li><kbd>1–5</kbd>оружие (или колесо)</li>
+      <li><kbd>B</kbd>закупка (в заморозку)</li>
+      <li><kbd>Tab</kbd>таблица счёта</li>
+      <li><kbd>Shift</kbd>тихий шаг</li>
+      <li><kbd>Ctrl</kbd>присед</li>
+      <li><kbd>Пробел</kbd>прыжок</li>
+      <li><kbd>F3</kbd>счётчик FPS</li>
+      <li><kbd>F4</kbd>waypoints карты</li>
+      <li><kbd>Esc</kbd>пауза</li>
+    </ul>
+    <button id="button-start" class="button button-primary" type="button">Нажми, чтобы начать</button>
+    <p class="screen-hint lock-hint" aria-live="polite"></p>
+  </section>
+
+  <section id="screen-pause" class="screen" hidden>
+    <h2 class="screen-title">Пауза</h2>
+    <ul class="controls-list">
+      <li><kbd>WASD</kbd>движение</li>
+      <li><kbd>Мышь</kbd>обзор</li>
+      <li><kbd>ЛКМ</kbd>огонь</li>
+      <li><kbd>ПКМ</kbd>зум (снайперка)</li>
+      <li><kbd>R</kbd>перезарядка</li>
+      <li><kbd>1–5</kbd>оружие (или колесо)</li>
+      <li><kbd>B</kbd>закупка (в заморозку)</li>
+      <li><kbd>Tab</kbd>таблица счёта</li>
+      <li><kbd>Shift</kbd>тихий шаг</li>
+      <li><kbd>Ctrl</kbd>присед</li>
+      <li><kbd>Пробел</kbd>прыжок</li>
+      <li><kbd>F3</kbd>счётчик FPS</li>
+      <li><kbd>F4</kbd>waypoints карты</li>
+      <li><kbd>Esc</kbd>пауза</li>
+    </ul>
+    <button id="button-resume" class="button button-primary" type="button">Продолжить</button>
+    <p class="screen-hint lock-hint" aria-live="polite"></p>
+  </section>
+
+  <section id="screen-round-end" class="screen" hidden role="status" aria-live="polite">
+    <h2 id="round-end-title" class="screen-title"></h2>
+    <p id="round-end-reason" class="screen-text"></p>
+    <p id="round-end-score" class="round-end-score"></p>
+    <p id="round-end-reward" class="screen-text"></p>
+    <p id="round-end-next" class="screen-hint"></p>
+  </section>
+
+  <section id="screen-match-end" class="screen" hidden>
+    <h2 id="match-end-title" class="screen-title"></h2>
+    <p id="match-end-score" class="round-end-score"></p>
+    <div id="match-end-table"></div>
+    <p id="match-end-status" class="screen-hint" aria-live="polite"></p>
+    <button id="button-play-again" class="button button-primary" type="button">Сыграть ещё</button>
+    <p class="screen-hint lock-hint" aria-live="polite"></p>
+  </section>
+
+  <!-- Порядок скриптов = порядок зависимостей. В момент загрузки файл может использовать только то, что подключено выше. -->
+  <!-- На следующих этапах раскомментируются строки по мере появления файлов. Порядок менять нельзя. -->
+  <script src="libs/three.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/weapon_system.js"></script>
+  <script src="js/bots.js"></script>
+  <!-- <script src="js/hud.js"></script>            этап 7 -->
+  <script src="js/menu.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
