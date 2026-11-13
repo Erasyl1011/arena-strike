@@ -141,6 +141,9 @@ function shouldBlockBrowserDefault(keyCode) {
 }
 
 function onKeyDown(event) {
+  if (isDeveloperConsoleOpen()) {
+    return;
+  }
   if (shouldBlockBrowserDefault(event.code)) {
     event.preventDefault();
   }

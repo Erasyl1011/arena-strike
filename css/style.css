@@ -40,6 +40,7 @@
   --z-scoreboard: 19;
   --z-screen: 20;
   --z-fps: 30;
+  --z-console: 40;
 }
 
 html,
@@ -231,6 +232,88 @@ body {
   border-radius: var(--radius-small);
   pointer-events: none;
   z-index: var(--z-fps);
+}
+
+.developer-console {
+  position: fixed;
+  inset: 0 0 auto;
+  height: min(44vh, 26rem);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: rgba(9, 11, 14, 0.96);
+  border-bottom: 2px solid var(--color-accent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  z-index: var(--z-console);
+}
+
+.developer-console-header {
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-accent);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.developer-console-header span {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.developer-console-close {
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.developer-console-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+  font: 0.88rem/1.45 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.developer-console-line { margin: 0 0 0.2rem; }
+.developer-console-line.command { color: var(--color-text); }
+.developer-console-line.success { color: #a9e6a0; }
+.developer-console-line.error { color: #ff8585; }
+
+.developer-console-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-accent);
+  border-top: 1px solid var(--color-border);
+  font: 0.95rem Consolas, "Courier New", monospace;
+}
+
+.developer-console-form input {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  user-select: text;
+}
+
+@media (max-width: 600px) {
+  .developer-console { height: min(55vh, 26rem); }
+  .developer-console-header { gap: var(--space-2); }
 }
 
 /* Временные элементы: прицел, строка раунда, оружие с патронами и сообщение об уроне. Настоящий HUD появится на этапе 7 */

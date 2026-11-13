@@ -39,13 +39,13 @@ var viewModelData = {
 };
 
 var HANDS_GLB_PATH = 'assets/models/hands/counter-strike_source_viewmodel_hands.glb';
-// В этих GLB уже записан поворот экспорта: автоматы/пистолет смотрят вдоль -Z.
-// Нож после загрузки смотрит вдоль +Y, поэтому для него нужна отдельная ориентация.
+// Firearm GLB-ы экспортированы с дулом по +Z; поворачиваем их в сторону камеры -Z.
+// Нож после загрузки направлен вдоль +Y, поэтому для него задана отдельная ось.
 var WEAPON_GLB_MODELS = {
   knife: { path: 'assets/models/weapons/knife_default_ct__cs2.glb', axis: 'y', direction: 1, length: 0.38 },
-  pistol: { path: 'assets/models/weapons/deagle_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.38 },
-  rifle: { path: 'assets/models/weapons/ak47_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.82 },
-  sniper: { path: 'assets/models/weapons/awp_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.95 }
+  pistol: { path: 'assets/models/weapons/deagle_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.38 },
+  rifle: { path: 'assets/models/weapons/ak47_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.82 },
+  sniper: { path: 'assets/models/weapons/awp_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.95 }
 };
 
 // Общие ресурсы моделей ботов: ромб-метка и невидимый материал хитбоксов
@@ -502,9 +502,63 @@ function loadWeaponModel(group, weaponId, definition) {
   });
 }
 
+function createViewModelMuzzleFlash(group, weapon) {
+  var material = new THREE.MeshBasicMaterial({
+    map: getTexture('muzzleFlash'),
+    color: 0xffcf69,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false
+  });
+  var flash = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  flash.visible = false;
+  flash.frustumCulled = false;
+  var modelSpec = WEAPON_GLB_MODELS[weapon.id];
+  if (modelSpec !== undefined) {
+    flash.position.set(0, 0.015, -modelSpec.length / 2);
+  } else {
+    flash.position.set(weapon.viewModel.muzzle.x, weapon.viewModel.muzzle.y, weapon.viewModel.muzzle.z);
+  }
+  group.add(flash);
+  group.userData.muzzleFlash = flash;
+  group.userData.muzzleFlashTimer = 0;
+}
+
+function showViewModelMuzzleFlash(index) {
+  if (settings.reduceFlashing || viewPose.isHidden) {
+    return;
+  }
+  var group = viewModelData.groups[index];
+  if (group === undefined || group.userData.muzzleFlash === undefined) {
+    return;
+  }
+  var flash = group.userData.muzzleFlash;
+  flash.material.opacity = 0.95;
+  flash.scale.set(0.2 + Math.random() * 0.08, 0.12 + Math.random() * 0.06, 1);
+  flash.rotation.z = Math.random() * Math.PI * 2;
+  flash.visible = true;
+  group.userData.muzzleFlashTimer = 0.055;
+}
+
+function updateViewModelMuzzleFlash(step) {
+  for (var index = 0; index < viewModelData.groups.length; index++) {
+    var group = viewModelData.groups[index];
+    if (group.userData.muzzleFlashTimer <= 0) {
+      continue;
+    }
+    group.userData.muzzleFlashTimer = Math.max(0, group.userData.muzzleFlashTimer - step);
+    var flash = group.userData.muzzleFlash;
+    flash.material.opacity = group.userData.muzzleFlashTimer / 0.055;
+    flash.visible = group.userData.muzzleFlashTimer > 0;
+  }
+}
+
 function createWeaponViewModel(weapon, weaponId) {
   var group = new THREE.Group();
   group.userData.loadPromise = loadWeaponModel(group, weaponId, weapon);
+  createViewModelMuzzleFlash(group, weapon);
   group.visible = false;
   return group;
 }
@@ -515,7 +569,7 @@ function createWeaponViewModels() {
   viewModelData.root = new THREE.Group();
   viewModelData.groups = [];
   viewModelData.handsGroup = new THREE.Group();
-  viewModelData.handsGroup.position.set(-0.2, -0.04, -0.16);
+  viewModelData.handsGroup.position.set(-0.08, -0.1, -0.16);
   viewModelData.root.add(viewModelData.handsGroup);
   var loading = [loadHandsModel()];
   for (var index = 0; index < WEAPON_ORDER.length; index++) {

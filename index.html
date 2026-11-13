@@ -36,6 +36,19 @@
 
   <div id="fps-counter" class="fps-counter" hidden>FPS: …</div>
 
+  <section id="developer-console" class="developer-console" hidden aria-label="Консоль разработчика">
+    <header class="developer-console-header">
+      <strong>КОНСОЛЬ РАЗРАБОТЧИКА</strong>
+      <span>~ / Ё — закрыть</span>
+      <button id="developer-console-close" class="developer-console-close" type="button" aria-label="Закрыть консоль">×</button>
+    </header>
+    <div id="developer-console-output" class="developer-console-output" role="log" aria-live="polite"></div>
+    <form id="developer-console-form" class="developer-console-form" autocomplete="off">
+      <label for="developer-console-input">&gt;</label>
+      <input id="developer-console-input" type="text" spellcheck="false" autocomplete="off" aria-label="Команда">
+    </form>
+  </section>
+
   <section id="screen-loading" class="screen screen-opaque" aria-live="polite">
     <h1 class="screen-title js-game-title">Arena Strike 3D</h1>
     <div id="loading-progress" class="progress" role="progressbar" aria-label="Прогресс загрузки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -123,6 +136,7 @@
   <!-- <script src="js/hud.js"></script>            этап 7 -->
   <script src="js/menu.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/dev_console.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

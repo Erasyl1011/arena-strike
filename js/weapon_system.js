@@ -173,6 +173,7 @@ function updateWeaponSystem(delta) {
   if (gameState.current !== GAME_STATE.PLAYING) {
     return;
   }
+  updateViewModelMuzzleFlash(delta);
   updateHitInfo(delta);
   if (player.isAlive) {
     updateWeaponTimers(delta);
@@ -306,6 +307,7 @@ function fireWeapon(weapon) {
   notifyBotsOfShot(player.position.x, player.position.z);
   shootPellets(weapon);
   applyRecoil(weapon);
+  showViewModelMuzzleFlash(index);
   showWeaponMuzzleFlash(weapon);
   playWeaponShotSound(weapon, 1);
 }

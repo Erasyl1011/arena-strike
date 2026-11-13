@@ -303,6 +303,7 @@ function createPlayer() {
 function bindEvents() {
   window.addEventListener('resize', onWindowResize);
   initInput();
+  initDeveloperConsole();
   initAudio();
   initMenu();
   initGame(engine.canvas);
@@ -366,6 +367,9 @@ function updateDeathOverlay() {
 
 // Действия, которые работают в любом состоянии игры
 function handleGlobalActions() {
+  if (isDeveloperConsoleOpen()) {
+    return;
+  }
   if (wasActionPressed('toggleBotsFreeze')) {
     botSystem.isFrozen = !botSystem.isFrozen;
   }
@@ -419,11 +423,15 @@ function mainLoop(timestamp) {
   var realDelta = Math.max(0, (timestamp - engine.lastFrameTime) / MS_PER_SECOND);
   var logicDelta = Math.min(realDelta, CONFIG.loop.maxDelta);
   engine.lastFrameTime = timestamp;
-  handleGlobalActions();
-  applyZoomToMouseDelta();
-  updatePlayerLook();
-  runFixedUpdates(logicDelta);
-  updateWeaponSystem(logicDelta);
+  if (isDeveloperConsoleOpen()) {
+    resetInputState();
+  } else {
+    handleGlobalActions();
+    applyZoomToMouseDelta();
+    updatePlayerLook();
+    runFixedUpdates(logicDelta);
+    updateWeaponSystem(logicDelta);
+  }
   updateEffects(logicDelta);
   updateMenu();
   updateDeathOverlay();
