@@ -451,6 +451,13 @@ function getGLBObjectBounds(object) {
 
 function loadHandsModel() {
   return loadGLB(HANDS_GLB_PATH).then(function (gltf) {
+    // Skinned hand meshes can move outside the static GLB bounds after skinning.
+    // Disable frustum culling so Three.js does not incorrectly drop the first-person model.
+    gltf.scene.traverse(function (object) {
+      if (object.isMesh) {
+        object.frustumCulled = false;
+      }
+    });
     var bounds = getGLBObjectBounds(gltf.scene);
     var size = bounds.getSize(new THREE.Vector3());
     var center = bounds.getCenter(new THREE.Vector3());
@@ -459,7 +466,7 @@ function loadHandsModel() {
       throw new Error('Не удалось определить размер модели рук: ' + HANDS_GLB_PATH);
     }
     // Модель рук экспортирована в меньшем масштабе; приводим её к размеру от первого лица.
-    var scale = 0.58 / largestDimension;
+    var scale = 0.82 / largestDimension;
     var fitted = new THREE.Group();
     fitted.scale.setScalar(scale);
     fitted.position.copy(center).multiplyScalar(-scale);
@@ -569,7 +576,7 @@ function createWeaponViewModels() {
   viewModelData.root = new THREE.Group();
   viewModelData.groups = [];
   viewModelData.handsGroup = new THREE.Group();
-  viewModelData.handsGroup.position.set(-0.08, -0.1, -0.16);
+  viewModelData.handsGroup.position.set(-0.02, -0.22, -0.26);
   viewModelData.root.add(viewModelData.handsGroup);
   var loading = [loadHandsModel()];
   for (var index = 0; index < WEAPON_ORDER.length; index++) {
@@ -612,7 +619,10 @@ function applyViewPose(pose) {
     0,
     dip * view.reloadRoll
   );
-  root.visible = !pose.isHidden;
+  root.visible = true;
+  for (var index = 0; index < viewModelData.groups.length; index++) {
+    viewModelData.groups[index].visible = index === pose.weaponIndex && !pose.isHidden;
+  }
 }
 
 // ---------- бот: торс, голова, руки, ноги, оружие, метка команды и невидимые хитбоксы ----------
