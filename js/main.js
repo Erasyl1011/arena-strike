@@ -109,16 +109,33 @@ function runNextLoadingStep() {
     return;
   }
   var step = loadingSteps[engine.loadingStepIndex];
+  var result;
   try {
-    step.run();
+    result = step.run();
   } catch (error) {
-    console.error(error);
-    showFatalError(CONFIG.text.errorLoading + error.message);
+    failLoadingStep(error);
     return;
   }
+
+  if (result && typeof result.then === 'function') {
+    showLoadingProgress(step.label);
+    result.then(function () {
+      completeLoadingStep(step);
+    }).catch(failLoadingStep);
+    return;
+  }
+  completeLoadingStep(step);
+}
+
+function completeLoadingStep(step) {
   engine.loadingStepIndex += 1;
   showLoadingProgress(step.label);
   setTimeout(runNextLoadingStep, CONFIG.loading.stepDelayMs);
+}
+
+function failLoadingStep(error) {
+  console.error(error);
+  showFatalError(CONFIG.text.errorLoading + error.message);
 }
 
 function finishLoading() {
@@ -262,6 +279,7 @@ function createWeaponView() {
   engine.weaponScene.add(ambient);
   engine.weaponScene.add(sun);
   engine.weaponScene.add(createWeaponViewModels());
+  return viewModelData.ready;
 }
 
 function createEffects() {

@@ -31,9 +31,21 @@ var textureRandomState = 1;
 var viewModelData = {
   root: null,
   groups: [],
+  handsGroup: null,
+  ready: null,
   materials: {},
   boxGeometry: null,
   cylinderGeometry: null
+};
+
+var HANDS_GLB_PATH = 'assets/models/hands/counter-strike_source_viewmodel_hands.glb';
+// В этих GLB уже записан поворот экспорта: автоматы/пистолет смотрят вдоль -Z.
+// Нож после загрузки смотрит вдоль +Y, поэтому для него нужна отдельная ориентация.
+var WEAPON_GLB_MODELS = {
+  knife: { path: 'assets/models/weapons/knife_default_ct__cs2.glb', axis: 'y', direction: 1, length: 0.38 },
+  pistol: { path: 'assets/models/weapons/deagle_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.38 },
+  rifle: { path: 'assets/models/weapons/ak47_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.82 },
+  sniper: { path: 'assets/models/weapons/awp_counter_strike_2.glb', axis: 'z', direction: -1, length: 0.95 }
 };
 
 // Общие ресурсы моделей ботов: ромб-метка и невидимый материал хитбоксов
@@ -421,11 +433,78 @@ function addViewModelPart(group, part) {
   group.add(mesh);
 }
 
-function createWeaponViewModel(weapon) {
-  var group = new THREE.Group();
-  for (var index = 0; index < weapon.viewModel.parts.length; index++) {
-    addViewModelPart(group, weapon.viewModel.parts[index]);
+function loadGLB(path) {
+  return new Promise(function (resolve, reject) {
+    var loader = new THREE.GLTFLoader();
+    loader.load(path, resolve, undefined, reject);
+  });
+}
+
+function getGLBObjectBounds(object) {
+  object.updateMatrixWorld(true);
+  var bounds = new THREE.Box3().setFromObject(object);
+  if (bounds.isEmpty()) {
+    throw new Error('В GLB нет видимой модели: ' + object.name);
   }
+  return bounds;
+}
+
+function loadHandsModel() {
+  return loadGLB(HANDS_GLB_PATH).then(function (gltf) {
+    var bounds = getGLBObjectBounds(gltf.scene);
+    var size = bounds.getSize(new THREE.Vector3());
+    var center = bounds.getCenter(new THREE.Vector3());
+    var largestDimension = Math.max(size.x, size.y, size.z);
+    if (largestDimension <= 0) {
+      throw new Error('Не удалось определить размер модели рук: ' + HANDS_GLB_PATH);
+    }
+    // Модель рук экспортирована в меньшем масштабе; приводим её к размеру от первого лица.
+    var scale = 0.58 / largestDimension;
+    var fitted = new THREE.Group();
+    fitted.scale.setScalar(scale);
+    fitted.position.copy(center).multiplyScalar(-scale);
+    fitted.add(gltf.scene);
+    viewModelData.handsGroup.add(fitted);
+  });
+}
+
+function loadWeaponModel(group, weaponId, definition) {
+  var modelSpec = WEAPON_GLB_MODELS[weaponId];
+  if (modelSpec === undefined) {
+    for (var index = 0; index < definition.viewModel.parts.length; index++) {
+      addViewModelPart(group, definition.viewModel.parts[index]);
+    }
+    return null;
+  }
+  return loadGLB(modelSpec.path).then(function (gltf) {
+    var bounds = getGLBObjectBounds(gltf.scene);
+    var size = bounds.getSize(new THREE.Vector3());
+    var center = bounds.getCenter(new THREE.Vector3());
+    var sourceAxis = new THREE.Vector3(
+      modelSpec.axis === 'x' ? modelSpec.direction : 0,
+      modelSpec.axis === 'y' ? modelSpec.direction : 0,
+      modelSpec.axis === 'z' ? modelSpec.direction : 0
+    );
+    var targetAxis = new THREE.Vector3(0, 0, -1);
+    var axisLength = size[modelSpec.axis];
+    if (axisLength <= 0) {
+      throw new Error('Не удалось определить длину модели оружия: ' + modelSpec.path);
+    }
+    var scale = modelSpec.length / axisLength;
+    var rotation = new THREE.Quaternion().setFromUnitVectors(sourceAxis, targetAxis);
+    var fitted = new THREE.Group();
+    fitted.quaternion.copy(rotation);
+    fitted.scale.setScalar(scale);
+    fitted.position.copy(center).negate().applyQuaternion(rotation).multiplyScalar(scale);
+    fitted.add(gltf.scene);
+    group.position.z = -modelSpec.length / 2;
+    group.add(fitted);
+  });
+}
+
+function createWeaponViewModel(weapon, weaponId) {
+  var group = new THREE.Group();
+  group.userData.loadPromise = loadWeaponModel(group, weaponId, weapon);
   group.visible = false;
   return group;
 }
@@ -434,11 +513,21 @@ function createWeaponViewModel(weapon) {
 function createWeaponViewModels() {
   createModelGeometries();
   viewModelData.root = new THREE.Group();
+  viewModelData.groups = [];
+  viewModelData.handsGroup = new THREE.Group();
+  viewModelData.handsGroup.position.set(-0.2, -0.04, -0.16);
+  viewModelData.root.add(viewModelData.handsGroup);
+  var loading = [loadHandsModel()];
   for (var index = 0; index < WEAPON_ORDER.length; index++) {
-    var group = createWeaponViewModel(WEAPONS[WEAPON_ORDER[index]]);
+    var weaponId = WEAPON_ORDER[index];
+    var group = createWeaponViewModel(WEAPONS[weaponId], weaponId);
     viewModelData.groups.push(group);
     viewModelData.root.add(group);
+    if (group.userData.loadPromise !== null) {
+      loading.push(group.userData.loadPromise);
+    }
   }
+  viewModelData.ready = Promise.all(loading);
   return viewModelData.root;
 }
 
