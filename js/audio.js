@@ -1,78 +1,96 @@
 // Роль: звук — синтез через Web Audio (шум, осцилляторы, фильтры, огибающие); громкости берутся из settings.
 
+var BOT_DAMAGE_VOICE_PATHS = [
+  'assets/audio/bots/CHUPPAAUDIO.mp3',
+  'assets/audio/bots/MEYRAMBEKAUDIO.mp3'
+];
+
 var audio = {
   context: null,
   effectsGain: null,
   musicGain: null,
   noiseBuffer: null,
-  botDamageBuffer: null,
-  botDamageSource: null,
-  botDamagePending: false,
-  botDamageLoading: false,
-  botDamageLoadFailed: false,
-  botDamageElement: new Audio('assets/audio/bots/CHUPPAAUDIO.mp3'),
-  botDamageElementUnlocked: false,
-  botDamageFallbackPending: false,
+  botVoices: {},
   activeVoices: 0,
   stepDistance: 0
 };
 
-audio.botDamageElement.preload = 'auto';
-audio.botDamageElement.addEventListener('error', function () {
-  console.error('Не удалось открыть assets/audio/bots/CHUPPAAUDIO.mp3', audio.botDamageElement.error);
-});
+function getBotVoice(path) {
+  if (audio.botVoices[path] !== undefined) {
+    return audio.botVoices[path];
+  }
+  var element = new Audio(path);
+  element.preload = 'auto';
+  var voice = {
+    path: path,
+    buffer: null,
+    source: null,
+    pending: false,
+    loading: false,
+    loadFailed: false,
+    element: element,
+    elementUnlocked: false,
+    fallbackPending: false
+  };
+  element.addEventListener('error', function () {
+    console.error('Не удалось открыть ' + path, element.error);
+  });
+  audio.botVoices[path] = voice;
+  return voice;
+}
 
-function playBotDamageFallback() {
-  if (!audio.botDamageElementUnlocked) {
-    audio.botDamageFallbackPending = true;
+function playBotVoiceFallback(voice) {
+  if (!voice.elementUnlocked) {
+    voice.fallbackPending = true;
     return;
   }
-  audio.botDamageFallbackPending = false;
-  audio.botDamageElement.pause();
-  audio.botDamageElement.volume = settings.effectsVolume;
-  if (audio.botDamageElement.readyState > 0) {
-    audio.botDamageElement.currentTime = 0;
+  voice.fallbackPending = false;
+  voice.element.pause();
+  voice.element.volume = settings.effectsVolume;
+  if (voice.element.readyState > 0) {
+    voice.element.currentTime = 0;
   }
-  var playback = audio.botDamageElement.play();
+  var playback = voice.element.play();
   if (playback && typeof playback.catch === 'function') {
     playback.catch(function (error) {
-      console.error('Не удалось воспроизвести голос бота', error);
+      console.error('Не удалось воспроизвести голос бота из ' + voice.path, error);
     });
   }
 }
 
-function unlockBotDamageFallback() {
-  if (audio.botDamageElementUnlocked) {
+function unlockBotVoiceFallback(voice) {
+  if (voice.elementUnlocked) {
     return;
   }
-  audio.botDamageElement.muted = true;
-  var playback = audio.botDamageElement.play();
+  voice.element.muted = true;
+  var playback = voice.element.play();
   function finishUnlock() {
-    audio.botDamageElement.pause();
-    if (audio.botDamageElement.readyState > 0) {
-      audio.botDamageElement.currentTime = 0;
+    voice.element.pause();
+    if (voice.element.readyState > 0) {
+      voice.element.currentTime = 0;
     }
-    audio.botDamageElement.muted = false;
-    audio.botDamageElementUnlocked = true;
-    if (audio.botDamageFallbackPending) {
-      playBotDamageFallback();
+    voice.element.muted = false;
+    voice.elementUnlocked = true;
+    if (voice.fallbackPending) {
+      playBotVoiceFallback(voice);
     }
   }
   if (playback && typeof playback.then === 'function') {
     playback.then(finishUnlock).catch(function () {
-      audio.botDamageElement.muted = false;
+      voice.element.muted = false;
     });
   } else {
     finishUnlock();
   }
 }
 
-function loadBotDamageVoice() {
-  if (audio.context === null || audio.botDamageBuffer !== null || audio.botDamageLoading) {
+function loadBotDamageVoice(path) {
+  var voice = getBotVoice(path);
+  if (audio.context === null || voice.buffer !== null || voice.loading || voice.loadFailed) {
     return;
   }
-  audio.botDamageLoading = true;
-  fetch('assets/audio/bots/CHUPPAAUDIO.mp3')
+  voice.loading = true;
+  fetch(path)
     .then(function (response) {
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
@@ -83,56 +101,58 @@ function loadBotDamageVoice() {
       return audio.context.decodeAudioData(fileData);
     })
     .then(function (buffer) {
-      audio.botDamageBuffer = buffer;
-      audio.botDamageLoading = false;
-      if (audio.botDamagePending) {
-        audio.botDamagePending = false;
-        playBotDamageVoice();
+      voice.buffer = buffer;
+      voice.loading = false;
+      if (voice.pending) {
+        voice.pending = false;
+        playBotDamageVoice(path);
       }
     })
     .catch(function (error) {
-      audio.botDamageLoading = false;
-      audio.botDamageLoadFailed = true;
-      console.error('Не удалось загрузить или декодировать assets/audio/bots/CHUPPAAUDIO.mp3', error);
-      if (audio.botDamagePending) {
-        audio.botDamagePending = false;
-        playBotDamageFallback();
+      voice.loading = false;
+      voice.loadFailed = true;
+      console.error('Не удалось загрузить или декодировать ' + path, error);
+      if (voice.pending) {
+        voice.pending = false;
+        playBotVoiceFallback(voice);
       }
     });
 }
 
-function playBotDamageVoice() {
-  if (audio.context === null || audio.context.state !== 'running') {
-    if (audio.context === null) {
-      playBotDamageFallback();
-      return;
-    }
-    audio.botDamagePending = true;
+function playBotDamageVoice(path) {
+  var voicePath = path || BOT_DAMAGE_VOICE_PATHS[0];
+  var voice = getBotVoice(voicePath);
+  if (audio.context === null) {
+    playBotVoiceFallback(voice);
     return;
   }
-  if (audio.botDamageBuffer === null) {
-    if (audio.botDamageLoadFailed) {
-      playBotDamageFallback();
+  if (audio.context.state !== 'running') {
+    voice.pending = true;
+    return;
+  }
+  if (voice.buffer === null) {
+    if (voice.loadFailed) {
+      playBotVoiceFallback(voice);
       return;
     }
-    audio.botDamagePending = true;
-    loadBotDamageVoice();
+    voice.pending = true;
+    loadBotDamageVoice(voicePath);
     return;
   }
 
-  if (audio.botDamageSource !== null) {
-    audio.botDamageSource.onended = null;
-    audio.botDamageSource.stop();
+  if (voice.source !== null) {
+    voice.source.onended = null;
+    voice.source.stop();
   }
   var source = audio.context.createBufferSource();
-  source.buffer = audio.botDamageBuffer;
+  source.buffer = voice.buffer;
   source.connect(audio.effectsGain);
   source.onended = function () {
-    if (audio.botDamageSource === source) {
-      audio.botDamageSource = null;
+    if (voice.source === source) {
+      voice.source = null;
     }
   };
-  audio.botDamageSource = source;
+  voice.source = source;
   source.start();
 }
 
@@ -145,8 +165,11 @@ function initAudio() {
 
 function onFirstUserGesture() {
   unlockAudio();
-  unlockBotDamageFallback();
-  loadBotDamageVoice();
+  for (var index = 0; index < BOT_DAMAGE_VOICE_PATHS.length; index++) {
+    var voice = getBotVoice(BOT_DAMAGE_VOICE_PATHS[index]);
+    unlockBotVoiceFallback(voice);
+    loadBotDamageVoice(voice.path);
+  }
   if (audio.context !== null) {
     document.removeEventListener('click', onFirstUserGesture);
     document.removeEventListener('keydown', onFirstUserGesture);
@@ -187,9 +210,13 @@ function unlockAudio() {
     var resumeResult = audio.context.resume();
     if (resumeResult && typeof resumeResult.then === 'function') {
       resumeResult.then(function () {
-        if (audio.botDamagePending && audio.botDamageBuffer !== null) {
-          audio.botDamagePending = false;
-          playBotDamageVoice();
+        var voicePaths = Object.keys(audio.botVoices);
+        for (var index = 0; index < voicePaths.length; index++) {
+          var voice = audio.botVoices[voicePaths[index]];
+          if (voice.pending && voice.buffer !== null) {
+            voice.pending = false;
+            playBotDamageVoice(voice.path);
+          }
         }
       }).catch(function (error) {
         console.warn('Не удалось запустить AudioContext:', error);

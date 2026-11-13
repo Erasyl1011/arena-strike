@@ -85,10 +85,13 @@ function createBotBody() {
 
 // Бот — простая структура; поля, которые читают другие файлы: health, isAlive, name, hitFlashTimer, onKilled, onDamaged
 function createBot(index) {
+  var isSpecialBot = index === 0;
   var bot = {
     index: index,
-    name: 'Бот ' + (index + 1),
-    model: createBotModel(),
+    name: isSpecialBot ? 'Мейрамбек' : 'Бот ' + (index + 1),
+    isSpecialBot: isSpecialBot,
+    voicePath: isSpecialBot ? 'assets/audio/bots/MEYRAMBEKAUDIO.mp3' : 'assets/audio/bots/CHUPPAAUDIO.mp3',
+    model: createBotModel(isSpecialBot ? 'assets/bots/faces/MEYRAMBEK.jpg' : 'assets/bots/faces/CHUPPA.jpg'),
     body: createBotBody(),
     isActive: false,
     isAlive: false,

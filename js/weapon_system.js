@@ -480,7 +480,7 @@ function damageTarget(target, hitPart, amount) {
   target.isAlive = target.health > 0;
   target.hitFlashTimer = CONFIG.bots.hitFlashSeconds;
   showHitInfo(target, hitPart, amount);
-  playBotDamageVoice();
+  playBotDamageVoice(target.voicePath);
   if (!target.isAlive && target.onKilled !== undefined) {
     target.onKilled(target);
   } else if (target.isAlive && target.onDamaged !== undefined) {

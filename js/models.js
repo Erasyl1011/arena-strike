@@ -40,23 +40,23 @@ var viewModelData = {
 var botModelData = {
   markerGeometry: null,
   hitboxMaterial: null,
-  faceTexture: null
+  faceTextures: {}
 };
 
-function loadBotFaceTexture() {
-  if (botModelData.faceTexture !== null) {
-    return botModelData.faceTexture;
+function loadBotFaceTexture(path) {
+  if (botModelData.faceTextures[path] !== undefined) {
+    return botModelData.faceTextures[path];
   }
-  botModelData.faceTexture = new THREE.TextureLoader().load(
-    'assets/bots/faces/CHUPPA.jpg',
+  botModelData.faceTextures[path] = new THREE.TextureLoader().load(
+    path,
     undefined,
     undefined,
     function (error) {
-      console.error('Не удалось загрузить лицо бота: assets/bots/faces/CHUPPA.jpg', error);
+      console.error('Не удалось загрузить лицо бота: ' + path, error);
     }
   );
-  botModelData.faceTexture.encoding = THREE.sRGBEncoding;
-  return botModelData.faceTexture;
+  botModelData.faceTextures[path].encoding = THREE.sRGBEncoding;
+  return botModelData.faceTextures[path];
 }
 
 // При sRGB-выводе цвета материалов и света нужно переводить в линейное пространство
@@ -508,7 +508,7 @@ function createLimbPivot(material, spec, side) {
   return pivot;
 }
 
-function addBotBodyParts(model, spec) {
+function addBotBodyParts(model, spec, facePath) {
   var weapon = new THREE.Mesh(viewModelData.boxGeometry, createBotMaterial(model, spec.weapon.color));
   weapon.scale.set(spec.weapon.w, spec.weapon.h, spec.weapon.d);
   weapon.position.set(spec.weapon.x, spec.weapon.y, spec.weapon.z);
@@ -518,7 +518,7 @@ function addBotBodyParts(model, spec) {
   model.group.add(createScaledBox(createBotMaterial(model, spec.torso.color), spec.torso));
   model.group.add(createScaledBox(createBotMaterial(model, spec.head.color), spec.head));
   // Бот смотрит вдоль -z, поэтому картинка лица находится на передней стороне головы.
-  var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(), transparent: true });
+  var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(facePath), transparent: true });
   var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.62, spec.head.h * 0.82), faceMaterial);
   // PlaneGeometry по умолчанию смотрит в +z, а перед головы бота — в -z.
   face.rotation.y = Math.PI;
@@ -558,10 +558,11 @@ function addBotHitboxes(model) {
 }
 
 // Возвращает {group, hitboxes[], materials[], legLeft, legRight, armLeft, armRight}; модель скрыта, пока бот не появился
-function createBotModel() {
+function createBotModel(facePath) {
   createModelGeometries();
   ensureBotModelResources();
   var spec = CONFIG.bots.model;
+  var botFacePath = facePath || 'assets/bots/faces/CHUPPA.jpg';
   var model = {
     group: new THREE.Group(),
     hitboxes: [],
@@ -572,7 +573,7 @@ function createBotModel() {
     armRight: null
   };
   model.group.rotation.order = 'YXZ'; // сначала поворот по yaw, потом падение
-  addBotBodyParts(model, spec);
+  addBotBodyParts(model, spec, botFacePath);
   addBotLimbs(model, spec);
   addBotHitboxes(model);
   model.group.visible = false;
