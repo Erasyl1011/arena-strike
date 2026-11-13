@@ -348,6 +348,9 @@ function updateDeathOverlay() {
 
 // Действия, которые работают в любом состоянии игры
 function handleGlobalActions() {
+  if (wasActionPressed('toggleBotsFreeze')) {
+    botSystem.isFrozen = !botSystem.isFrozen;
+  }
   if (wasActionPressed('toggleFps')) {
     toggleFpsCounter();
   }

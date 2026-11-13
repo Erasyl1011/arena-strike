@@ -11,6 +11,7 @@ var BOT_STATE = {
 
 var botSystem = {
   bots: [],
+  isFrozen: false,
   difficultyName: CONFIG.defaultDifficulty,
   respawnTimer: 0,
   pathQueue: [],
@@ -951,6 +952,9 @@ function updateBotRespawn(step, activeCount) {
 }
 
 function updateBots(step) {
+  if (botSystem.isFrozen) {
+    return;
+  }
   var activeCount = 0;
   for (var index = 0; index < botSystem.bots.length; index++) {
     updateBot(botSystem.bots[index], step);

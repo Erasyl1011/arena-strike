@@ -445,6 +445,7 @@ var CONFIG = {
       scoreboard: 'Tab',
       toggleFps: 'F3',
       toggleDebug: 'F4',
+      toggleBotsFreeze: 'KeyH',
       weapon1: 'Digit1',
       weapon2: 'Digit2',
       weapon3: 'Digit3',

@@ -47,7 +47,14 @@ function loadBotFaceTexture() {
   if (botModelData.faceTexture !== null) {
     return botModelData.faceTexture;
   }
-  botModelData.faceTexture = new THREE.TextureLoader().load('assets/bots/faces/CHUPPA.jpg');
+  botModelData.faceTexture = new THREE.TextureLoader().load(
+    'assets/bots/faces/CHUPPA.jpg',
+    undefined,
+    undefined,
+    function (error) {
+      console.error('Не удалось загрузить лицо бота: assets/bots/faces/CHUPPA.jpg', error);
+    }
+  );
   botModelData.faceTexture.encoding = THREE.sRGBEncoding;
   return botModelData.faceTexture;
 }
@@ -512,7 +519,7 @@ function addBotBodyParts(model, spec) {
   model.group.add(createScaledBox(createBotMaterial(model, spec.head.color), spec.head));
   // Бот смотрит вдоль -z, поэтому картинка лица находится на передней стороне головы.
   var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(), transparent: true });
-  var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.82, spec.head.h * 0.82), faceMaterial);
+  var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.62, spec.head.h * 0.82), faceMaterial);
   // PlaneGeometry по умолчанию смотрит в +z, а перед головы бота — в -z.
   face.rotation.y = Math.PI;
   face.position.set(0, spec.head.y, -spec.head.d / 2 - 0.002);

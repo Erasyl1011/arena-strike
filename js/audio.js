@@ -11,14 +11,19 @@ var audio = {
 
 var botDamageVoice = new Audio('assets/audio/bots/CHUPPAAUDIO.mp3');
 botDamageVoice.preload = 'auto';
+botDamageVoice.addEventListener('error', function () {
+  console.error('Не удалось загрузить звук бота: assets/audio/bots/CHUPPAAUDIO.mp3', botDamageVoice.error);
+});
 
 function playBotDamageVoice() {
   botDamageVoice.pause();
-  botDamageVoice.currentTime = 0;
+  if (botDamageVoice.readyState > 0) {
+    botDamageVoice.currentTime = 0;
+  }
   var playback = botDamageVoice.play();
   if (playback && typeof playback.catch === 'function') {
     playback.catch(function () {
-      // Браузер может запретить звук, пока игрок не взаимодействовал со страницей.
+      console.warn('Браузер не разрешил воспроизвести звук попадания бота.');
     });
   }
 }
