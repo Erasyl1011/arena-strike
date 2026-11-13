@@ -28,6 +28,25 @@ function playBotDamageVoice() {
   }
 }
 
+function unlockBotDamageVoice() {
+  botDamageVoice.muted = true;
+  var playback = botDamageVoice.play();
+  if (playback && typeof playback.then === 'function') {
+    playback.then(function () {
+      botDamageVoice.pause();
+      if (botDamageVoice.readyState > 0) {
+        botDamageVoice.currentTime = 0;
+      }
+      botDamageVoice.muted = false;
+    }).catch(function () {
+      botDamageVoice.muted = false;
+    });
+  } else {
+    botDamageVoice.pause();
+    botDamageVoice.muted = false;
+  }
+}
+
 // ---------- запуск: браузер разрешает звук только после действия пользователя ----------
 
 function initAudio() {
@@ -37,6 +56,7 @@ function initAudio() {
 
 function onFirstUserGesture() {
   unlockAudio();
+  unlockBotDamageVoice();
   if (audio.context !== null) {
     document.removeEventListener('click', onFirstUserGesture);
     document.removeEventListener('keydown', onFirstUserGesture);
