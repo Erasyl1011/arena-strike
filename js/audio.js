@@ -5,46 +5,135 @@ var audio = {
   effectsGain: null,
   musicGain: null,
   noiseBuffer: null,
+  botDamageBuffer: null,
+  botDamageSource: null,
+  botDamagePending: false,
+  botDamageLoading: false,
+  botDamageLoadFailed: false,
+  botDamageElement: new Audio('assets/audio/bots/CHUPPAAUDIO.mp3'),
+  botDamageElementUnlocked: false,
+  botDamageFallbackPending: false,
   activeVoices: 0,
   stepDistance: 0
 };
 
-var botDamageVoice = new Audio('assets/audio/bots/CHUPPAAUDIO.mp3');
-botDamageVoice.preload = 'auto';
-botDamageVoice.addEventListener('error', function () {
-  console.error('Не удалось загрузить звук бота: assets/audio/bots/CHUPPAAUDIO.mp3', botDamageVoice.error);
+audio.botDamageElement.preload = 'auto';
+audio.botDamageElement.addEventListener('error', function () {
+  console.error('Не удалось открыть assets/audio/bots/CHUPPAAUDIO.mp3', audio.botDamageElement.error);
 });
 
-function playBotDamageVoice() {
-  botDamageVoice.pause();
-  if (botDamageVoice.readyState > 0) {
-    botDamageVoice.currentTime = 0;
+function playBotDamageFallback() {
+  if (!audio.botDamageElementUnlocked) {
+    audio.botDamageFallbackPending = true;
+    return;
   }
-  var playback = botDamageVoice.play();
+  audio.botDamageFallbackPending = false;
+  audio.botDamageElement.pause();
+  audio.botDamageElement.volume = settings.effectsVolume;
+  if (audio.botDamageElement.readyState > 0) {
+    audio.botDamageElement.currentTime = 0;
+  }
+  var playback = audio.botDamageElement.play();
   if (playback && typeof playback.catch === 'function') {
-    playback.catch(function () {
-      console.warn('Браузер не разрешил воспроизвести звук попадания бота.');
+    playback.catch(function (error) {
+      console.error('Не удалось воспроизвести голос бота', error);
     });
   }
 }
 
-function unlockBotDamageVoice() {
-  botDamageVoice.muted = true;
-  var playback = botDamageVoice.play();
+function unlockBotDamageFallback() {
+  if (audio.botDamageElementUnlocked) {
+    return;
+  }
+  audio.botDamageElement.muted = true;
+  var playback = audio.botDamageElement.play();
+  function finishUnlock() {
+    audio.botDamageElement.pause();
+    if (audio.botDamageElement.readyState > 0) {
+      audio.botDamageElement.currentTime = 0;
+    }
+    audio.botDamageElement.muted = false;
+    audio.botDamageElementUnlocked = true;
+    if (audio.botDamageFallbackPending) {
+      playBotDamageFallback();
+    }
+  }
   if (playback && typeof playback.then === 'function') {
-    playback.then(function () {
-      botDamageVoice.pause();
-      if (botDamageVoice.readyState > 0) {
-        botDamageVoice.currentTime = 0;
-      }
-      botDamageVoice.muted = false;
-    }).catch(function () {
-      botDamageVoice.muted = false;
+    playback.then(finishUnlock).catch(function () {
+      audio.botDamageElement.muted = false;
     });
   } else {
-    botDamageVoice.pause();
-    botDamageVoice.muted = false;
+    finishUnlock();
   }
+}
+
+function loadBotDamageVoice() {
+  if (audio.context === null || audio.botDamageBuffer !== null || audio.botDamageLoading) {
+    return;
+  }
+  audio.botDamageLoading = true;
+  fetch('assets/audio/bots/CHUPPAAUDIO.mp3')
+    .then(function (response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.arrayBuffer();
+    })
+    .then(function (fileData) {
+      return audio.context.decodeAudioData(fileData);
+    })
+    .then(function (buffer) {
+      audio.botDamageBuffer = buffer;
+      audio.botDamageLoading = false;
+      if (audio.botDamagePending) {
+        audio.botDamagePending = false;
+        playBotDamageVoice();
+      }
+    })
+    .catch(function (error) {
+      audio.botDamageLoading = false;
+      audio.botDamageLoadFailed = true;
+      console.error('Не удалось загрузить или декодировать assets/audio/bots/CHUPPAAUDIO.mp3', error);
+      if (audio.botDamagePending) {
+        audio.botDamagePending = false;
+        playBotDamageFallback();
+      }
+    });
+}
+
+function playBotDamageVoice() {
+  if (audio.context === null || audio.context.state !== 'running') {
+    if (audio.context === null) {
+      playBotDamageFallback();
+      return;
+    }
+    audio.botDamagePending = true;
+    return;
+  }
+  if (audio.botDamageBuffer === null) {
+    if (audio.botDamageLoadFailed) {
+      playBotDamageFallback();
+      return;
+    }
+    audio.botDamagePending = true;
+    loadBotDamageVoice();
+    return;
+  }
+
+  if (audio.botDamageSource !== null) {
+    audio.botDamageSource.onended = null;
+    audio.botDamageSource.stop();
+  }
+  var source = audio.context.createBufferSource();
+  source.buffer = audio.botDamageBuffer;
+  source.connect(audio.effectsGain);
+  source.onended = function () {
+    if (audio.botDamageSource === source) {
+      audio.botDamageSource = null;
+    }
+  };
+  audio.botDamageSource = source;
+  source.start();
 }
 
 // ---------- запуск: браузер разрешает звук только после действия пользователя ----------
@@ -56,7 +145,8 @@ function initAudio() {
 
 function onFirstUserGesture() {
   unlockAudio();
-  unlockBotDamageVoice();
+  unlockBotDamageFallback();
+  loadBotDamageVoice();
   if (audio.context !== null) {
     document.removeEventListener('click', onFirstUserGesture);
     document.removeEventListener('keydown', onFirstUserGesture);
@@ -94,7 +184,17 @@ function unlockAudio() {
     createAudioContext();
   }
   if (audio.context !== null && audio.context.state === 'suspended') {
-    audio.context.resume();
+    var resumeResult = audio.context.resume();
+    if (resumeResult && typeof resumeResult.then === 'function') {
+      resumeResult.then(function () {
+        if (audio.botDamagePending && audio.botDamageBuffer !== null) {
+          audio.botDamagePending = false;
+          playBotDamageVoice();
+        }
+      }).catch(function (error) {
+        console.warn('Не удалось запустить AudioContext:', error);
+      });
+    }
   }
 }
 
