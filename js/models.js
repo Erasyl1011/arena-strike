@@ -513,6 +513,8 @@ function addBotBodyParts(model, spec) {
   // Бот смотрит вдоль -z, поэтому картинка лица находится на передней стороне головы.
   var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(), transparent: true });
   var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.82, spec.head.h * 0.82), faceMaterial);
+  // PlaneGeometry по умолчанию смотрит в +z, а перед головы бота — в -z.
+  face.rotation.y = Math.PI;
   face.position.set(0, spec.head.y, -spec.head.d / 2 - 0.002);
   model.group.add(face);
   model.group.add(weapon);
