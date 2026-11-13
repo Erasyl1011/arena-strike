@@ -707,6 +707,7 @@ function enterRetreat(bot) {
 
 // Вызывается из damageTarget, когда бот получил урон, но выжил
 function handleBotDamaged(bot) {
+  playBotDamageVoice();
   rememberPlayerPosition(bot);
   if (shouldBotRetreat(bot)) {
     enterRetreat(bot);

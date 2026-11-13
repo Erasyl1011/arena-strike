@@ -39,8 +39,18 @@ var viewModelData = {
 // Общие ресурсы моделей ботов: ромб-метка и невидимый материал хитбоксов
 var botModelData = {
   markerGeometry: null,
-  hitboxMaterial: null
+  hitboxMaterial: null,
+  faceTexture: null
 };
+
+function loadBotFaceTexture() {
+  if (botModelData.faceTexture !== null) {
+    return botModelData.faceTexture;
+  }
+  botModelData.faceTexture = new THREE.TextureLoader().load('assets/bots/faces/CHUPPA.jpg');
+  botModelData.faceTexture.encoding = THREE.sRGBEncoding;
+  return botModelData.faceTexture;
+}
 
 // При sRGB-выводе цвета материалов и света нужно переводить в линейное пространство
 function createLinearColor(hexColor) {
@@ -500,6 +510,11 @@ function addBotBodyParts(model, spec) {
   marker.position.set(0, spec.marker.y, 0);
   model.group.add(createScaledBox(createBotMaterial(model, spec.torso.color), spec.torso));
   model.group.add(createScaledBox(createBotMaterial(model, spec.head.color), spec.head));
+  // Бот смотрит вдоль -z, поэтому картинка лица находится на передней стороне головы.
+  var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(), transparent: true });
+  var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.82, spec.head.h * 0.82), faceMaterial);
+  face.position.set(0, spec.head.y, -spec.head.d / 2 - 0.002);
+  model.group.add(face);
   model.group.add(weapon);
   model.group.add(marker);
 }

@@ -9,6 +9,20 @@ var audio = {
   stepDistance: 0
 };
 
+var botDamageVoice = new Audio('assets/audio/bots/CHUPPAAUDIO.mp3');
+botDamageVoice.preload = 'auto';
+
+function playBotDamageVoice() {
+  botDamageVoice.pause();
+  botDamageVoice.currentTime = 0;
+  var playback = botDamageVoice.play();
+  if (playback && typeof playback.catch === 'function') {
+    playback.catch(function () {
+      // Браузер может запретить звук, пока игрок не взаимодействовал со страницей.
+    });
+  }
+}
+
 // ---------- запуск: браузер разрешает звук только после действия пользователя ----------
 
 function initAudio() {
