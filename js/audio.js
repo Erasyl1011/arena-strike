@@ -2,7 +2,11 @@
 
 var BOT_DAMAGE_VOICE_PATHS = [
   'assets/audio/bots/CHUPPAAUDIO.mp3',
-  'assets/audio/bots/MEYRAMBEKAUDIO.mp3'
+  'assets/audio/bots/MEYRAMBEKAUDIO.mp3',
+  'assets/audio/bots/KOCHAUDIO.mp3',
+  'assets/audio/bots/CHUPADIEAUDIO.mp3',
+  'assets/audio/bots/MEYRAMBEKDIEAUDIO.mp3',
+  'assets/audio/bots/KOCHDIEAUDIO.mp3'
 ];
 
 var audio = {
@@ -154,6 +158,10 @@ function playBotDamageVoice(path) {
   };
   voice.source = source;
   source.start();
+}
+
+function playBotDeathVoice(path) {
+  playBotDamageVoice(path);
 }
 
 // ---------- запуск: браузер разрешает звук только после действия пользователя ----------

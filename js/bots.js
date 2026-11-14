@@ -87,13 +87,19 @@ function createBotBody() {
 
 // Бот — простая структура; поля, которые читают другие файлы: health, isAlive, name, hitFlashTimer, onKilled, onDamaged
 function createBot(index) {
-  var isSpecialBot = index === 0;
+  var characterIndex = index % 3;
+  var character = [
+    { name: 'Мейрамбек', face: 'MEYRAMBEK.jpg', voice: 'MEYRAMBEKAUDIO.mp3', death: 'MEYRAMBEKDIEAUDIO.mp3' },
+    { name: 'Чуппа', face: 'CHUPPA.jpg', voice: 'CHUPPAAUDIO.mp3', death: 'CHUPADIEAUDIO.mp3' },
+    { name: 'Коч', face: 'KOCH.jpg', voice: 'KOCHAUDIO.mp3', death: 'KOCHDIEAUDIO.mp3' }
+  ][characterIndex];
   var bot = {
     index: index,
-    name: isSpecialBot ? 'Мейрамбек' : 'Бот ' + (index + 1),
-    isSpecialBot: isSpecialBot,
-    voicePath: isSpecialBot ? 'assets/audio/bots/MEYRAMBEKAUDIO.mp3' : 'assets/audio/bots/CHUPPAAUDIO.mp3',
-    model: createBotModel(isSpecialBot ? 'assets/bots/faces/MEYRAMBEK.jpg' : 'assets/bots/faces/CHUPPA.jpg'),
+    name: character.name,
+    isSpecialBot: characterIndex === 0,
+    voicePath: 'assets/audio/bots/' + character.voice,
+    deathVoicePath: 'assets/audio/bots/' + character.death,
+    model: createBotModel('assets/bots/faces/' + character.face),
     body: createBotBody(),
     isActive: false,
     isAlive: false,
@@ -792,6 +798,7 @@ function handleBotDamaged(bot) {
 
 // Вызывается из damageTarget, когда здоровье бота дошло до нуля
 function handleBotKilled(bot) {
+  playBotDeathVoice(bot.deathVoicePath);
   bot.state = BOT_STATE.DEAD;
   bot.fallProgress = 0;
   bot.deadTimer = CONFIG.bots.corpseSeconds;
