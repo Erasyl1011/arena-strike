@@ -144,6 +144,67 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Main menu and inspectable character / weapon previews */
+.main-menu-screen {
+  align-items: stretch;
+  justify-content: space-between;
+  padding: clamp(1.5rem, 5vw, 5rem);
+  text-align: left;
+  background: linear-gradient(90deg, rgba(9, 12, 16, 0.92) 0%, rgba(9, 12, 16, 0.67) 42%, rgba(9, 12, 16, 0.08) 100%), linear-gradient(0deg, rgba(9, 12, 16, 0.7), transparent 30%);
+}
+
+.menu-brand { margin-top: auto; max-width: 42rem; }
+.menu-eyebrow { color: var(--color-accent); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; }
+.menu-brand .screen-title { margin: 0.65rem 0 0.8rem; text-align: left; font-size: clamp(2.4rem, 6vw, 5.4rem); letter-spacing: 0.08em; }
+.menu-brand .screen-text { max-width: 27rem; font-size: 1rem; line-height: 1.6; }
+.main-menu-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 0.55rem; width: min(24rem, 100%); margin: 2rem 0 auto 0; }
+.menu-action { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 3.2rem; padding: 0.75rem 1rem; border-color: rgba(232, 230, 225, 0.17); background: rgba(14, 16, 19, 0.48); font-size: 0.82rem; letter-spacing: 0.12em; text-align: left; }
+.menu-action span { color: var(--color-text-muted); font-size: 0.67rem; letter-spacing: 0.1em; }
+.menu-action-play { min-height: 3.8rem; font-size: 1rem; }
+.menu-action-play span { color: inherit; font-size: 1.3rem; }
+.menu-footer { display: flex; flex-wrap: wrap; gap: 0.8rem 2rem; color: rgba(232, 230, 225, 0.63); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.13em; }
+
+.showcase-screen { align-items: stretch; justify-content: flex-start; padding: clamp(1rem, 3vw, 2.8rem) clamp(1.25rem, 5vw, 5rem); background: linear-gradient(90deg, rgba(9, 12, 16, 0.94), rgba(9, 12, 16, 0.76) 43%, rgba(9, 12, 16, 0.32)); text-align: left; }
+.showcase-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 3rem; }
+.showcase-header .menu-eyebrow { text-align: center; }
+.showcase-back { justify-self: start; padding: 0.55rem 0.8rem; border-color: transparent; background: transparent; font-size: 0.72rem; letter-spacing: 0.1em; }
+.showcase-counter { justify-self: end; color: var(--color-text-muted); font-size: 0.75rem; letter-spacing: 0.13em; }
+.showcase-content { display: grid; grid-template-columns: minmax(18rem, 0.8fr) minmax(20rem, 1.2fr); align-items: center; gap: clamp(1.5rem, 6vw, 6rem); width: min(76rem, 100%); height: calc(100% - 3rem); margin: 0 auto; }
+.showcase-copy { z-index: 1; max-width: 29rem; }
+.showcase-copy .screen-title { margin: 0.5rem 0 1.4rem; text-align: left; font-size: clamp(2.3rem, 5vw, 4.5rem); }
+.showcase-rule { width: 3.5rem; height: 2px; margin-bottom: 1.4rem; background: var(--color-accent); }
+.showcase-name { margin: 0 0 0.6rem; font-size: clamp(1.6rem, 3vw, 2.35rem); font-weight: 650; }
+.showcase-description { min-height: 3.2em; margin: 0; max-width: 25rem; color: var(--color-text-muted); line-height: 1.6; }
+.showcase-stats, .weapon-stats { display: grid; grid-template-columns: repeat(2, minmax(7rem, 1fr)); gap: 1.1rem; margin: 2rem 0; }
+.showcase-stats span, .weapon-stats span { display: flex; flex-direction: column; gap: 0.35rem; color: var(--color-text-muted); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; }
+.showcase-stats strong, .weapon-stats strong { color: var(--color-text); font-size: 0.94rem; font-weight: 600; letter-spacing: 0; }
+.weapon-stats { grid-template-columns: repeat(2, minmax(6rem, 1fr)); }
+.showcase-controls { display: flex; gap: 0.55rem; }
+.showcase-step { width: 3rem; height: 3rem; padding: 0; font-size: 1.15rem; }
+.showcase-select { min-width: 8rem; margin-left: auto; }
+.preview-window { position: relative; width: 100%; height: min(68vh, 39rem); min-height: 18rem; border: 1px solid rgba(232, 230, 225, 0.13); background: radial-gradient(ellipse at 50% 44%, rgba(84, 93, 100, 0.08), rgba(8, 10, 13, 0.25) 68%); touch-action: none; cursor: grab; }
+.preview-window:active { cursor: grabbing; }
+.preview-hint { position: absolute; right: 1rem; bottom: 1rem; color: rgba(232, 230, 225, 0.55); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.15em; pointer-events: none; }
+
+@media (max-width: 700px) {
+  .main-menu-screen { padding: 1.25rem; }
+  .menu-brand { margin-top: auto; }
+  .main-menu-actions { margin-top: 1rem; }
+  .menu-footer { gap: 0.5rem 1rem; font-size: 0.54rem; }
+  .showcase-screen { padding: 0.8rem 1rem 1.2rem; }
+  .showcase-content { grid-template-columns: 1fr; gap: 0.5rem; align-content: start; }
+  .showcase-copy { max-width: none; }
+  .showcase-copy .screen-title { margin-bottom: 0.5rem; font-size: 2rem; }
+  .showcase-rule { margin-bottom: 0.65rem; }
+  .showcase-description { min-height: 2.5em; font-size: 0.82rem; }
+  .showcase-stats, .weapon-stats { display: flex; gap: 1.2rem; margin: 0.8rem 0; }
+  .showcase-stats span, .weapon-stats span { font-size: 0.52rem; }
+  .showcase-stats strong, .weapon-stats strong { font-size: 0.78rem; }
+  .showcase-controls { position: absolute; right: 1rem; bottom: 1rem; left: 1rem; z-index: 2; }
+  .preview-window { height: 38vh; min-height: 12rem; }
+  .showcase-header .menu-eyebrow { font-size: 0.56rem; }
+}
+
 .controls-list kbd {
   display: inline-block;
   min-width: 1.6rem;

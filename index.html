@@ -57,27 +57,23 @@
     <p id="loading-label" class="screen-text">Загрузка…</p>
   </section>
 
-  <section id="screen-start" class="screen" hidden>
-    <h1 class="screen-title js-game-title">Arena Strike 3D</h1>
-    <p class="screen-text">Одиночный шутер от первого лица: ты против ботов. Матч до 5 побед.</p>
-    <ul class="controls-list">
-      <li><kbd>WASD</kbd>движение</li>
-      <li><kbd>Мышь</kbd>обзор</li>
-      <li><kbd>ЛКМ</kbd>огонь</li>
-      <li><kbd>ПКМ</kbd>зум (снайперка)</li>
-      <li><kbd>R</kbd>перезарядка</li>
-      <li><kbd>1–5</kbd>оружие (или колесо)</li>
-      <li><kbd>B</kbd>закупка (в заморозку)</li>
-      <li><kbd>Tab</kbd>таблица счёта</li>
-      <li><kbd>Shift</kbd>тихий шаг</li>
-      <li><kbd>Ctrl</kbd>присед</li>
-      <li><kbd>Пробел</kbd>прыжок</li>
-      <li><kbd>F3</kbd>счётчик FPS</li>
-      <li><kbd>F4</kbd>waypoints карты</li>
-      <li><kbd>Esc</kbd>пауза</li>
-    </ul>
-    <button id="button-start" class="button button-primary" type="button">Нажми, чтобы начать</button>
+    <section id="screen-start" class="screen main-menu-screen" hidden>
+    <div class="menu-brand"><span class="menu-eyebrow">TACTICAL ARENA</span><h1 class="screen-title js-game-title">Arena Strike 3D</h1><p class="screen-text">Выходи на Dust II. Сражайся с ботами. Забирай раунд.</p></div>
+    <nav class="main-menu-actions" aria-label="Главное меню">
+      <button id="button-start" class="button button-primary menu-action menu-action-play" type="button">PLAY <span>→</span></button>
+      <button id="button-open-bots" class="button menu-action" type="button">BOTS <span>01 / 03</span></button>
+      <button id="button-open-weapons" class="button menu-action" type="button">WEAPONS <span>02 / 05</span></button>
+    </nav>
+    <div class="menu-footer"><span>SOLO · VS BOTS</span><span>MATCH TO 5 WINS</span><span>WASD TO MOVE · MOUSE TO AIM</span></div>
     <p class="screen-hint lock-hint" aria-live="polite"></p>
+  </section>
+  <section id="screen-bots" class="screen showcase-screen" hidden aria-labelledby="bots-title">
+    <header class="showcase-header"><button class="button showcase-back" data-showcase-back type="button">← BACK</button><span class="menu-eyebrow">INTEL / PERSONNEL</span><span class="showcase-counter" id="bot-counter">01 / 03</span></header>
+    <div class="showcase-content"><div class="showcase-copy"><p class="menu-eyebrow">OPPONENT PROFILE</p><h2 class="screen-title" id="bots-title">BOTS</h2><div class="showcase-rule"></div><h3 class="showcase-name" id="bot-name"></h3><p class="showcase-description" id="bot-description"></p><div class="showcase-stats"><span>ROLE<strong>Combatant</strong></span><span>THREAT<strong>Active</strong></span></div><div class="showcase-controls"><button class="button showcase-step" id="bot-previous" type="button" aria-label="Предыдущий бот">←</button><button class="button showcase-step" id="bot-next" type="button" aria-label="Следующий бот">→</button><button class="button button-primary showcase-select" id="button-bot-play" type="button">PLAY</button></div></div><div class="preview-window" id="bot-preview-window"><span class="preview-hint">DRAG TO ROTATE</span></div></div>
+  </section>
+  <section id="screen-weapons" class="screen showcase-screen" hidden aria-labelledby="weapons-title">
+    <header class="showcase-header"><button class="button showcase-back" data-showcase-back type="button">← BACK</button><span class="menu-eyebrow">ARSENAL / LOADOUT</span><span class="showcase-counter" id="weapon-counter">01 / 05</span></header>
+    <div class="showcase-content"><div class="showcase-copy"><p class="menu-eyebrow">WEAPON SPECIFICATION</p><h2 class="screen-title" id="weapons-title">WEAPONS</h2><div class="showcase-rule"></div><h3 class="showcase-name" id="weapon-name"></h3><p class="showcase-description" id="weapon-description"></p><div class="weapon-stats"><span>DAMAGE<strong id="weapon-damage"></strong></span><span>MAGAZINE<strong id="weapon-magazine"></strong></span><span>RELOAD<strong id="weapon-reload"></strong></span><span>PRICE<strong id="weapon-price"></strong></span></div><div class="showcase-controls"><button class="button showcase-step" id="weapon-previous" type="button" aria-label="Предыдущее оружие">←</button><button class="button showcase-step" id="weapon-next" type="button" aria-label="Следующее оружие">→</button><button class="button button-primary showcase-select" id="button-weapon-play" type="button">PLAY</button></div></div><div class="preview-window" id="weapon-preview-window"><span class="preview-hint">DRAG TO ROTATE · SCROLL TO ZOOM</span></div></div>
   </section>
 
   <section id="screen-pause" class="screen" hidden>
@@ -133,6 +129,7 @@
   <script src="js/player.js"></script>
   <script src="js/weapon_system.js"></script>
   <script src="js/bots.js"></script>
+  <script src="js/showcase.js"></script>
   <!-- <script src="js/hud.js"></script>            этап 7 -->
   <script src="js/menu.js"></script>
   <script src="js/game.js"></script>

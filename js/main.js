@@ -7,6 +7,8 @@ var engine = {
   renderer: null,
   scene: null,
   camera: null,
+  menuCamera: null,
+  menuOrbit: 0,
   weaponScene: null,
   weaponCamera: null,
   sky: null,
@@ -190,6 +192,7 @@ function createCamera() {
   );
   // Порядок YXZ: сначала поворот вокруг вертикали (yaw), потом наклон (pitch), как в шутерах
   engine.camera.rotation.order = 'YXZ';
+  engine.menuCamera = new THREE.PerspectiveCamera(CONFIG.render.fovDegrees, getAspectRatio(), CONFIG.render.nearPlane, CONFIG.render.farPlane);
 }
 
 function paintSkyGradient(geometry) {
@@ -261,7 +264,13 @@ function createNextTexture() {
 }
 
 function createMapData() {
-  initMapData();
+  return loadDust2MapModel().then(function () {
+    initMapData();
+  }).catch(function (error) {
+    console.warn('Dust II model could not be loaded; using the built-in map.', error);
+    dust2MapModel = null;
+    initMapData();
+  });
 }
 
 function createLevel() {
@@ -307,6 +316,7 @@ function bindEvents() {
   initAudio();
   initMenu();
   initGame(engine.canvas);
+  initShowcase();
 }
 
 // ---------- события ----------
@@ -318,6 +328,8 @@ function onWindowResize() {
   resizeRenderer();
   engine.camera.aspect = getAspectRatio();
   engine.camera.updateProjectionMatrix();
+  engine.menuCamera.aspect = getAspectRatio();
+  engine.menuCamera.updateProjectionMatrix();
   engine.weaponCamera.aspect = getAspectRatio();
   engine.weaponCamera.updateProjectionMatrix();
 }
@@ -413,9 +425,17 @@ function runFixedUpdates(delta) {
 // Сначала мир, потом сброс глубины и оружие поверх него
 function renderFrame() {
   engine.renderer.clear();
-  engine.renderer.render(engine.scene, engine.camera);
+  var renderCamera = engine.camera;
+  if (gameState.current === GAME_STATE.MENU || gameState.current === GAME_STATE.MATCH_END) {
+    engine.menuOrbit += 0.00035;
+    engine.menuCamera.position.set(Math.cos(engine.menuOrbit) * 38, 16, Math.sin(engine.menuOrbit) * 38);
+    engine.menuCamera.lookAt(0, 1.5, 0);
+    renderCamera = engine.menuCamera;
+  }
+  engine.renderer.render(engine.scene, renderCamera);
   engine.renderer.clearDepth();
   engine.renderer.render(engine.weaponScene, engine.weaponCamera);
+  renderShowcasePreview(engine.renderer);
 }
 
 // Оружие, отдача и эффекты считаются каждый кадр (а не в фиксированном шаге): нажатие кнопки не должно пропадать

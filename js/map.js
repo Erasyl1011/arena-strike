@@ -98,6 +98,47 @@ var mapData = {
   debugGroup: null
 };
 
+var dust2MapModel = null;
+var DUST2_MODEL_PATH = 'assets/maps/de_dust2.glb';
+var DUST2_MODEL_SCALE = 1.6;
+
+function loadDust2MapModel() {
+  return new Promise(function (resolve, reject) {
+    new THREE.GLTFLoader().load(DUST2_MODEL_PATH, function (gltf) {
+      dust2MapModel = gltf.scene;
+      dust2MapModel.rotation.x = -Math.PI / 2;
+      dust2MapModel.scale.setScalar(DUST2_MODEL_SCALE);
+      dust2MapModel.updateMatrixWorld(true);
+      mapData.name = 'Dust II';
+      mapData.boxes = [];
+      mapData.wallMeshes = [];
+      dust2MapModel.traverse(function (object) {
+        if (!object.isMesh || !object.geometry) return;
+        object.geometry.computeBoundingBox();
+        var bounds = object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld);
+        // GLB contains a few flat floor pieces; leave those to the existing floor collider.
+        if (bounds.max.y - bounds.min.y < 0.55) return;
+        var box = {
+          x: (bounds.min.x + bounds.max.x) / 2,
+          y: (bounds.min.y + bounds.max.y) / 2,
+          z: (bounds.min.z + bounds.max.z) / 2,
+          w: Math.max(0.12, bounds.max.x - bounds.min.x),
+          h: Math.max(0.12, bounds.max.y - bounds.min.y),
+          d: Math.max(0.12, bounds.max.z - bounds.min.z),
+          texture: 'concrete'
+        };
+        mapData.boxes.push(box);
+        mapData.wallMeshes.push(object);
+      });
+      // Keep combat and bot navigation inside the model's footprint.
+      mapData.bounds = { minX: -29, maxX: 29, minZ: -29, maxZ: 29 };
+      mapData.spawnZones.player = { minX: -4, maxX: 4, minZ: 22, maxZ: 26, yawDegrees: 0 };
+      mapData.spawnZones.bots = { minX: -4, maxX: 4, minZ: -26, maxZ: -22, yawDegrees: 180 };
+      resolve();
+    }, undefined, reject);
+  });
+}
+
 // Служебный отрезок для проверок видимости и проходимости (не создаём новые объекты в каждом вызове)
 var segmentScratch = {
   fromX: 0,
@@ -535,6 +576,17 @@ function toggleMapDebug() {
 
 // Вызывается после initMapData() и после создания текстур
 function buildLevel(scene, shadowsEnabled) {
+  if (dust2MapModel !== null) {
+    scene.add(dust2MapModel);
+    dust2MapModel.traverse(function (object) {
+      if (object.isMesh) {
+        object.castShadow = shadowsEnabled;
+        object.receiveShadow = shadowsEnabled;
+      }
+    });
+    buildDebugGroup(scene);
+    return;
+  }
   buildFloor(scene, shadowsEnabled);
   buildWallMeshes(scene, shadowsEnabled);
   buildDebugGroup(scene);
