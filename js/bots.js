@@ -11,9 +11,6 @@ var BOT_STATE = {
 
 var botSystem = {
   bots: [],
-  isFrozen: false,
-  scene: null,
-  suppressAutoRespawn: false,
   difficultyName: CONFIG.defaultDifficulty,
   respawnTimer: 0,
   pathQueue: [],
@@ -87,19 +84,10 @@ function createBotBody() {
 
 // Бот — простая структура; поля, которые читают другие файлы: health, isAlive, name, hitFlashTimer, onKilled, onDamaged
 function createBot(index) {
-  var characterIndex = index % 3;
-  var character = [
-    { name: 'Мейрамбек', face: 'MEYRAMBEK.jpg', voice: 'MEYRAMBEKAUDIO.mp3', death: 'MEYRAMBEKDIEAUDIO.mp3' },
-    { name: 'Чуппа', face: 'CHUPPA.jpg', voice: 'CHUPPAAUDIO.mp3', death: 'CHUPADIEAUDIO.mp3' },
-    { name: 'Коч', face: 'KOCH.jpg', voice: 'KOCHAUDIO.mp3', death: 'KOCHDIEAUDIO.mp3' }
-  ][characterIndex];
   var bot = {
     index: index,
-    name: character.name,
-    isSpecialBot: characterIndex === 0,
-    voicePath: 'assets/audio/bots/' + character.voice,
-    deathVoicePath: 'assets/audio/bots/' + character.death,
-    model: createBotModel('assets/bots/faces/' + character.face),
+    name: 'Бот ' + (index + 1),
+    model: createBotModel(),
     body: createBotBody(),
     isActive: false,
     isAlive: false,
@@ -162,7 +150,6 @@ function createPathStorage(count) {
 }
 
 function initBots(scene) {
-  botSystem.scene = scene;
   var waypointCount = getWaypointCount();
   botSystem.pathQueue = createPathStorage(waypointCount);
   botSystem.pathPrevious = createPathStorage(waypointCount);
@@ -274,7 +261,6 @@ function deactivateBot(bot) {
 }
 
 function spawnBots(count) {
-  botSystem.suppressAutoRespawn = false;
   for (var index = 0; index < botSystem.bots.length; index++) {
     deactivateBot(botSystem.bots[index]);
   }
@@ -282,73 +268,6 @@ function spawnBots(count) {
     activateBot(botSystem.bots[botIndex], pickBotSpawnPoint(botIndex));
   }
   botSystem.respawnTimer = 0;
-}
-
-function findBotSpawnPointAwayFromActiveBots() {
-  var point = getRandomSpawnPoint(TEAM.BOTS);
-  for (var attempt = 0; attempt < CONFIG.bots.spawnTries; attempt++) {
-    point = getRandomSpawnPoint(TEAM.BOTS);
-    var isFree = true;
-    for (var index = 0; index < botSystem.bots.length; index++) {
-      var other = botSystem.bots[index];
-      if (other.isActive && other.isAlive &&
-          getDistance2D(point.x, point.z, other.body.position.x, other.body.position.z) < CONFIG.bots.spawnSpacing) {
-        isFree = false;
-        break;
-      }
-    }
-    if (isFree) {
-      return point;
-    }
-  }
-  return point;
-}
-
-function createBotForConsole() {
-  var bot = createBot(botSystem.bots.length);
-  bot.path = createPathStorage(botSystem.pathQueue.length || getWaypointCount());
-  botSystem.bots.push(bot);
-  botSystem.scene.add(bot.model.group);
-  return bot;
-}
-
-function addBotsFromConsole(count) {
-  if (botSystem.scene === null) {
-    return 0;
-  }
-  botSystem.suppressAutoRespawn = false;
-  var added = 0;
-  for (var index = 0; index < count; index++) {
-    var bot = null;
-    for (var botIndex = 0; botIndex < botSystem.bots.length; botIndex++) {
-      if (!botSystem.bots[botIndex].isActive) {
-        bot = botSystem.bots[botIndex];
-        break;
-      }
-    }
-    if (bot === null) {
-      bot = createBotForConsole();
-    }
-    activateBot(bot, findBotSpawnPointAwayFromActiveBots());
-    added += 1;
-  }
-  botSystem.respawnTimer = 0;
-  return added;
-}
-
-function removeBotsFromConsole(count) {
-  var removed = 0;
-  for (var index = botSystem.bots.length - 1; index >= 0 && removed < count; index--) {
-    if (botSystem.bots[index].isActive) {
-      deactivateBot(botSystem.bots[index]);
-      removed += 1;
-    }
-  }
-  if (getAliveBotCount() === 0) {
-    botSystem.suppressAutoRespawn = true;
-  }
-  botSystem.respawnTimer = 0;
-  return removed;
 }
 
 function respawnAllBots() {
@@ -798,7 +717,6 @@ function handleBotDamaged(bot) {
 
 // Вызывается из damageTarget, когда здоровье бота дошло до нуля
 function handleBotKilled(bot) {
-  playBotDeathVoice(bot.deathVoicePath);
   bot.state = BOT_STATE.DEAD;
   bot.fallProgress = 0;
   bot.deadTimer = CONFIG.bots.corpseSeconds;
@@ -1026,9 +944,6 @@ function updateBotRespawn(step, activeCount) {
     botSystem.respawnTimer = 0;
     return;
   }
-  if (botSystem.suppressAutoRespawn) {
-    return;
-  }
   botSystem.respawnTimer += step;
   if (botSystem.respawnTimer >= CONFIG.bots.respawnAllSeconds) {
     respawnAllBots();
@@ -1036,9 +951,6 @@ function updateBotRespawn(step, activeCount) {
 }
 
 function updateBots(step) {
-  if (botSystem.isFrozen) {
-    return;
-  }
   var activeCount = 0;
   for (var index = 0; index < botSystem.bots.length; index++) {
     updateBot(botSystem.bots[index], step);

@@ -7,7 +7,6 @@ var gameState = {
   lockTarget: null,
   lastUnlockTime: 0,
   isUnlockExpected: false, // курсор освобождён намеренно (меню, итог матча): пауза не нужна
-  isConsoleOpen: false,
   phase: ROUND_PHASE.FREEZE,
   phaseTimer: 0, // секунд до конца текущей фазы раунда
   summaryTimer: 0, // секунд до конца экрана итога раунда
@@ -114,12 +113,12 @@ function getLockWaitMilliseconds() {
 }
 
 // Вызывается только из обработчика клика или нажатия клавиши: иначе браузер откажет в захвате мыши
-function requestGameLock(skipRetryDelay) {
+function requestGameLock() {
   if (!isPointerLockSupported()) {
     showLockHint(CONFIG.text.lockUnsupported);
     return;
   }
-  if (!skipRetryDelay && getLockWaitMilliseconds() > 0) {
+  if (getLockWaitMilliseconds() > 0) {
     showLockHint(CONFIG.text.lockWait);
     return;
   }
@@ -133,14 +132,6 @@ function onLockButtonClick() {
 
 // Освобождает курсор для меню или экрана итога; paузу при этом включать не нужно
 function releasePointerLockForMenu() {
-  if (document.pointerLockElement === null) {
-    return;
-  }
-  gameState.isUnlockExpected = true;
-  document.exitPointerLock();
-}
-
-function releasePointerLockForConsole() {
   if (document.pointerLockElement === null) {
     return;
   }

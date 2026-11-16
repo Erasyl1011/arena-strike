@@ -31,45 +31,16 @@ var textureRandomState = 1;
 var viewModelData = {
   root: null,
   groups: [],
-  handsGroup: null,
-  ready: null,
   materials: {},
   boxGeometry: null,
   cylinderGeometry: null
 };
 
-var HANDS_GLB_PATH = 'assets/models/hands/counter-strike_source_viewmodel_hands.glb';
-// Firearm GLB-ы экспортированы с дулом по +Z; поворачиваем их в сторону камеры -Z.
-// Нож после загрузки направлен вдоль +Y, поэтому для него задана отдельная ось.
-var WEAPON_GLB_MODELS = {
-  knife: { path: 'assets/models/weapons/knife_default_ct__cs2.glb', axis: 'y', direction: 1, length: 0.38 },
-  pistol: { path: 'assets/models/weapons/deagle_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.38 },
-  rifle: { path: 'assets/models/weapons/ak47_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.82 },
-  sniper: { path: 'assets/models/weapons/awp_counter_strike_2.glb', axis: 'z', direction: 1, length: 0.95 }
-};
-
 // Общие ресурсы моделей ботов: ромб-метка и невидимый материал хитбоксов
 var botModelData = {
   markerGeometry: null,
-  hitboxMaterial: null,
-  faceTextures: {}
+  hitboxMaterial: null
 };
-
-function loadBotFaceTexture(path) {
-  if (botModelData.faceTextures[path] !== undefined) {
-    return botModelData.faceTextures[path];
-  }
-  botModelData.faceTextures[path] = new THREE.TextureLoader().load(
-    path,
-    undefined,
-    undefined,
-    function (error) {
-      console.error('Не удалось загрузить лицо бота: ' + path, error);
-    }
-  );
-  botModelData.faceTextures[path].encoding = THREE.sRGBEncoding;
-  return botModelData.faceTextures[path];
-}
 
 // При sRGB-выводе цвета материалов и света нужно переводить в линейное пространство
 function createLinearColor(hexColor) {
@@ -433,139 +404,11 @@ function addViewModelPart(group, part) {
   group.add(mesh);
 }
 
-function loadGLB(path) {
-  return new Promise(function (resolve, reject) {
-    var loader = new THREE.GLTFLoader();
-    loader.load(path, resolve, undefined, reject);
-  });
-}
-
-function getGLBObjectBounds(object) {
-  object.updateMatrixWorld(true);
-  var bounds = new THREE.Box3().setFromObject(object);
-  if (bounds.isEmpty()) {
-    throw new Error('В GLB нет видимой модели: ' + object.name);
-  }
-  return bounds;
-}
-
-function loadHandsModel() {
-  return loadGLB(HANDS_GLB_PATH).then(function (gltf) {
-    // Skinned hand meshes can move outside the static GLB bounds after skinning.
-    // Disable frustum culling so Three.js does not incorrectly drop the first-person model.
-    gltf.scene.traverse(function (object) {
-      if (object.isMesh) {
-        object.frustumCulled = false;
-      }
-    });
-    var bounds = getGLBObjectBounds(gltf.scene);
-    var size = bounds.getSize(new THREE.Vector3());
-    var center = bounds.getCenter(new THREE.Vector3());
-    var largestDimension = Math.max(size.x, size.y, size.z);
-    if (largestDimension <= 0) {
-      throw new Error('Не удалось определить размер модели рук: ' + HANDS_GLB_PATH);
-    }
-    // Модель рук экспортирована в меньшем масштабе; приводим её к размеру от первого лица.
-    var scale = 0.82 / largestDimension;
-    var fitted = new THREE.Group();
-    fitted.scale.setScalar(scale);
-    fitted.position.copy(center).multiplyScalar(-scale);
-    fitted.add(gltf.scene);
-    viewModelData.handsGroup.add(fitted);
-  });
-}
-
-function loadWeaponModel(group, weaponId, definition) {
-  var modelSpec = WEAPON_GLB_MODELS[weaponId];
-  if (modelSpec === undefined) {
-    for (var index = 0; index < definition.viewModel.parts.length; index++) {
-      addViewModelPart(group, definition.viewModel.parts[index]);
-    }
-    return null;
-  }
-  return loadGLB(modelSpec.path).then(function (gltf) {
-    var bounds = getGLBObjectBounds(gltf.scene);
-    var size = bounds.getSize(new THREE.Vector3());
-    var center = bounds.getCenter(new THREE.Vector3());
-    var sourceAxis = new THREE.Vector3(
-      modelSpec.axis === 'x' ? modelSpec.direction : 0,
-      modelSpec.axis === 'y' ? modelSpec.direction : 0,
-      modelSpec.axis === 'z' ? modelSpec.direction : 0
-    );
-    var targetAxis = new THREE.Vector3(0, 0, -1);
-    var axisLength = size[modelSpec.axis];
-    if (axisLength <= 0) {
-      throw new Error('Не удалось определить длину модели оружия: ' + modelSpec.path);
-    }
-    var scale = modelSpec.length / axisLength;
-    var rotation = new THREE.Quaternion().setFromUnitVectors(sourceAxis, targetAxis);
-    var fitted = new THREE.Group();
-    fitted.quaternion.copy(rotation);
-    fitted.scale.setScalar(scale);
-    fitted.position.copy(center).negate().applyQuaternion(rotation).multiplyScalar(scale);
-    fitted.add(gltf.scene);
-    group.position.z = -modelSpec.length / 2;
-    group.add(fitted);
-  });
-}
-
-function createViewModelMuzzleFlash(group, weapon) {
-  var material = new THREE.MeshBasicMaterial({
-    map: getTexture('muzzleFlash'),
-    color: 0xffcf69,
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    fog: false
-  });
-  var flash = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
-  flash.visible = false;
-  flash.frustumCulled = false;
-  var modelSpec = WEAPON_GLB_MODELS[weapon.id];
-  if (modelSpec !== undefined) {
-    flash.position.set(0, 0.015, -modelSpec.length / 2);
-  } else {
-    flash.position.set(weapon.viewModel.muzzle.x, weapon.viewModel.muzzle.y, weapon.viewModel.muzzle.z);
-  }
-  group.add(flash);
-  group.userData.muzzleFlash = flash;
-  group.userData.muzzleFlashTimer = 0;
-}
-
-function showViewModelMuzzleFlash(index) {
-  if (settings.reduceFlashing || viewPose.isHidden) {
-    return;
-  }
-  var group = viewModelData.groups[index];
-  if (group === undefined || group.userData.muzzleFlash === undefined) {
-    return;
-  }
-  var flash = group.userData.muzzleFlash;
-  flash.material.opacity = 0.95;
-  flash.scale.set(0.2 + Math.random() * 0.08, 0.12 + Math.random() * 0.06, 1);
-  flash.rotation.z = Math.random() * Math.PI * 2;
-  flash.visible = true;
-  group.userData.muzzleFlashTimer = 0.055;
-}
-
-function updateViewModelMuzzleFlash(step) {
-  for (var index = 0; index < viewModelData.groups.length; index++) {
-    var group = viewModelData.groups[index];
-    if (group.userData.muzzleFlashTimer <= 0) {
-      continue;
-    }
-    group.userData.muzzleFlashTimer = Math.max(0, group.userData.muzzleFlashTimer - step);
-    var flash = group.userData.muzzleFlash;
-    flash.material.opacity = group.userData.muzzleFlashTimer / 0.055;
-    flash.visible = group.userData.muzzleFlashTimer > 0;
-  }
-}
-
-function createWeaponViewModel(weapon, weaponId) {
+function createWeaponViewModel(weapon) {
   var group = new THREE.Group();
-  group.userData.loadPromise = loadWeaponModel(group, weaponId, weapon);
-  createViewModelMuzzleFlash(group, weapon);
+  for (var index = 0; index < weapon.viewModel.parts.length; index++) {
+    addViewModelPart(group, weapon.viewModel.parts[index]);
+  }
   group.visible = false;
   return group;
 }
@@ -574,21 +417,11 @@ function createWeaponViewModel(weapon, weaponId) {
 function createWeaponViewModels() {
   createModelGeometries();
   viewModelData.root = new THREE.Group();
-  viewModelData.groups = [];
-  viewModelData.handsGroup = new THREE.Group();
-  viewModelData.handsGroup.position.set(-0.02, -0.22, -0.26);
-  viewModelData.root.add(viewModelData.handsGroup);
-  var loading = [loadHandsModel()];
   for (var index = 0; index < WEAPON_ORDER.length; index++) {
-    var weaponId = WEAPON_ORDER[index];
-    var group = createWeaponViewModel(WEAPONS[weaponId], weaponId);
+    var group = createWeaponViewModel(WEAPONS[WEAPON_ORDER[index]]);
     viewModelData.groups.push(group);
     viewModelData.root.add(group);
-    if (group.userData.loadPromise !== null) {
-      loading.push(group.userData.loadPromise);
-    }
   }
-  viewModelData.ready = Promise.all(loading);
   return viewModelData.root;
 }
 
@@ -619,10 +452,7 @@ function applyViewPose(pose) {
     0,
     dip * view.reloadRoll
   );
-  root.visible = true;
-  for (var index = 0; index < viewModelData.groups.length; index++) {
-    viewModelData.groups[index].visible = index === pose.weaponIndex && !pose.isHidden;
-  }
+  root.visible = !pose.isHidden;
 }
 
 // ---------- бот: торс, голова, руки, ноги, оружие, метка команды и невидимые хитбоксы ----------
@@ -661,7 +491,7 @@ function createLimbPivot(material, spec, side) {
   return pivot;
 }
 
-function addBotBodyParts(model, spec, facePath) {
+function addBotBodyParts(model, spec) {
   var weapon = new THREE.Mesh(viewModelData.boxGeometry, createBotMaterial(model, spec.weapon.color));
   weapon.scale.set(spec.weapon.w, spec.weapon.h, spec.weapon.d);
   weapon.position.set(spec.weapon.x, spec.weapon.y, spec.weapon.z);
@@ -670,13 +500,6 @@ function addBotBodyParts(model, spec, facePath) {
   marker.position.set(0, spec.marker.y, 0);
   model.group.add(createScaledBox(createBotMaterial(model, spec.torso.color), spec.torso));
   model.group.add(createScaledBox(createBotMaterial(model, spec.head.color), spec.head));
-  // Бот смотрит вдоль -z, поэтому картинка лица находится на передней стороне головы.
-  var faceMaterial = new THREE.MeshBasicMaterial({ map: loadBotFaceTexture(facePath), transparent: true });
-  var face = new THREE.Mesh(new THREE.PlaneGeometry(spec.head.w * 0.62, spec.head.h * 0.82), faceMaterial);
-  // PlaneGeometry по умолчанию смотрит в +z, а перед головы бота — в -z.
-  face.rotation.y = Math.PI;
-  face.position.set(0, spec.head.y, -spec.head.d / 2 - 0.002);
-  model.group.add(face);
   model.group.add(weapon);
   model.group.add(marker);
 }
@@ -711,11 +534,10 @@ function addBotHitboxes(model) {
 }
 
 // Возвращает {group, hitboxes[], materials[], legLeft, legRight, armLeft, armRight}; модель скрыта, пока бот не появился
-function createBotModel(facePath) {
+function createBotModel() {
   createModelGeometries();
   ensureBotModelResources();
   var spec = CONFIG.bots.model;
-  var botFacePath = facePath || 'assets/bots/faces/CHUPPA.jpg';
   var model = {
     group: new THREE.Group(),
     hitboxes: [],
@@ -726,7 +548,7 @@ function createBotModel(facePath) {
     armRight: null
   };
   model.group.rotation.order = 'YXZ'; // сначала поворот по yaw, потом падение
-  addBotBodyParts(model, spec, botFacePath);
+  addBotBodyParts(model, spec);
   addBotLimbs(model, spec);
   addBotHitboxes(model);
   model.group.visible = false;

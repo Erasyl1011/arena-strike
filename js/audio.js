@@ -1,168 +1,13 @@
 // Роль: звук — синтез через Web Audio (шум, осцилляторы, фильтры, огибающие); громкости берутся из settings.
 
-var BOT_DAMAGE_VOICE_PATHS = [
-  'assets/audio/bots/CHUPPAAUDIO.mp3',
-  'assets/audio/bots/MEYRAMBEKAUDIO.mp3',
-  'assets/audio/bots/KOCHAUDIO.mp3',
-  'assets/audio/bots/CHUPADIEAUDIO.mp3',
-  'assets/audio/bots/MEYRAMBEKDIEAUDIO.mp3',
-  'assets/audio/bots/KOCHDIEAUDIO.mp3'
-];
-
 var audio = {
   context: null,
   effectsGain: null,
   musicGain: null,
   noiseBuffer: null,
-  botVoices: {},
   activeVoices: 0,
   stepDistance: 0
 };
-
-function getBotVoice(path) {
-  if (audio.botVoices[path] !== undefined) {
-    return audio.botVoices[path];
-  }
-  var element = new Audio(path);
-  element.preload = 'auto';
-  var voice = {
-    path: path,
-    buffer: null,
-    source: null,
-    pending: false,
-    loading: false,
-    loadFailed: false,
-    element: element,
-    elementUnlocked: false,
-    fallbackPending: false
-  };
-  element.addEventListener('error', function () {
-    console.error('Не удалось открыть ' + path, element.error);
-  });
-  audio.botVoices[path] = voice;
-  return voice;
-}
-
-function playBotVoiceFallback(voice) {
-  if (!voice.elementUnlocked) {
-    voice.fallbackPending = true;
-    return;
-  }
-  voice.fallbackPending = false;
-  voice.element.pause();
-  voice.element.volume = settings.effectsVolume;
-  if (voice.element.readyState > 0) {
-    voice.element.currentTime = 0;
-  }
-  var playback = voice.element.play();
-  if (playback && typeof playback.catch === 'function') {
-    playback.catch(function (error) {
-      console.error('Не удалось воспроизвести голос бота из ' + voice.path, error);
-    });
-  }
-}
-
-function unlockBotVoiceFallback(voice) {
-  if (voice.elementUnlocked) {
-    return;
-  }
-  voice.element.muted = true;
-  var playback = voice.element.play();
-  function finishUnlock() {
-    voice.element.pause();
-    if (voice.element.readyState > 0) {
-      voice.element.currentTime = 0;
-    }
-    voice.element.muted = false;
-    voice.elementUnlocked = true;
-    if (voice.fallbackPending) {
-      playBotVoiceFallback(voice);
-    }
-  }
-  if (playback && typeof playback.then === 'function') {
-    playback.then(finishUnlock).catch(function () {
-      voice.element.muted = false;
-    });
-  } else {
-    finishUnlock();
-  }
-}
-
-function loadBotDamageVoice(path) {
-  var voice = getBotVoice(path);
-  if (audio.context === null || voice.buffer !== null || voice.loading || voice.loadFailed) {
-    return;
-  }
-  voice.loading = true;
-  fetch(path)
-    .then(function (response) {
-      if (!response.ok) {
-        throw new Error('HTTP ' + response.status);
-      }
-      return response.arrayBuffer();
-    })
-    .then(function (fileData) {
-      return audio.context.decodeAudioData(fileData);
-    })
-    .then(function (buffer) {
-      voice.buffer = buffer;
-      voice.loading = false;
-      if (voice.pending) {
-        voice.pending = false;
-        playBotDamageVoice(path);
-      }
-    })
-    .catch(function (error) {
-      voice.loading = false;
-      voice.loadFailed = true;
-      console.error('Не удалось загрузить или декодировать ' + path, error);
-      if (voice.pending) {
-        voice.pending = false;
-        playBotVoiceFallback(voice);
-      }
-    });
-}
-
-function playBotDamageVoice(path) {
-  var voicePath = path || BOT_DAMAGE_VOICE_PATHS[0];
-  var voice = getBotVoice(voicePath);
-  if (audio.context === null) {
-    playBotVoiceFallback(voice);
-    return;
-  }
-  if (audio.context.state !== 'running') {
-    voice.pending = true;
-    return;
-  }
-  if (voice.buffer === null) {
-    if (voice.loadFailed) {
-      playBotVoiceFallback(voice);
-      return;
-    }
-    voice.pending = true;
-    loadBotDamageVoice(voicePath);
-    return;
-  }
-
-  if (voice.source !== null) {
-    voice.source.onended = null;
-    voice.source.stop();
-  }
-  var source = audio.context.createBufferSource();
-  source.buffer = voice.buffer;
-  source.connect(audio.effectsGain);
-  source.onended = function () {
-    if (voice.source === source) {
-      voice.source = null;
-    }
-  };
-  voice.source = source;
-  source.start();
-}
-
-function playBotDeathVoice(path) {
-  playBotDamageVoice(path);
-}
 
 // ---------- запуск: браузер разрешает звук только после действия пользователя ----------
 
@@ -173,11 +18,6 @@ function initAudio() {
 
 function onFirstUserGesture() {
   unlockAudio();
-  for (var index = 0; index < BOT_DAMAGE_VOICE_PATHS.length; index++) {
-    var voice = getBotVoice(BOT_DAMAGE_VOICE_PATHS[index]);
-    unlockBotVoiceFallback(voice);
-    loadBotDamageVoice(voice.path);
-  }
   if (audio.context !== null) {
     document.removeEventListener('click', onFirstUserGesture);
     document.removeEventListener('keydown', onFirstUserGesture);
@@ -215,21 +55,7 @@ function unlockAudio() {
     createAudioContext();
   }
   if (audio.context !== null && audio.context.state === 'suspended') {
-    var resumeResult = audio.context.resume();
-    if (resumeResult && typeof resumeResult.then === 'function') {
-      resumeResult.then(function () {
-        var voicePaths = Object.keys(audio.botVoices);
-        for (var index = 0; index < voicePaths.length; index++) {
-          var voice = audio.botVoices[voicePaths[index]];
-          if (voice.pending && voice.buffer !== null) {
-            voice.pending = false;
-            playBotDamageVoice(voice.path);
-          }
-        }
-      }).catch(function (error) {
-        console.warn('Не удалось запустить AudioContext:', error);
-      });
-    }
+    audio.context.resume();
   }
 }
 

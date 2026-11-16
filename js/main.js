@@ -7,8 +7,6 @@ var engine = {
   renderer: null,
   scene: null,
   camera: null,
-  menuCamera: null,
-  menuOrbit: 0,
   weaponScene: null,
   weaponCamera: null,
   sky: null,
@@ -111,33 +109,16 @@ function runNextLoadingStep() {
     return;
   }
   var step = loadingSteps[engine.loadingStepIndex];
-  var result;
   try {
-    result = step.run();
+    step.run();
   } catch (error) {
-    failLoadingStep(error);
+    console.error(error);
+    showFatalError(CONFIG.text.errorLoading + error.message);
     return;
   }
-
-  if (result && typeof result.then === 'function') {
-    showLoadingProgress(step.label);
-    result.then(function () {
-      completeLoadingStep(step);
-    }).catch(failLoadingStep);
-    return;
-  }
-  completeLoadingStep(step);
-}
-
-function completeLoadingStep(step) {
   engine.loadingStepIndex += 1;
   showLoadingProgress(step.label);
   setTimeout(runNextLoadingStep, CONFIG.loading.stepDelayMs);
-}
-
-function failLoadingStep(error) {
-  console.error(error);
-  showFatalError(CONFIG.text.errorLoading + error.message);
 }
 
 function finishLoading() {
@@ -192,7 +173,6 @@ function createCamera() {
   );
   // Порядок YXZ: сначала поворот вокруг вертикали (yaw), потом наклон (pitch), как в шутерах
   engine.camera.rotation.order = 'YXZ';
-  engine.menuCamera = new THREE.PerspectiveCamera(CONFIG.render.fovDegrees, getAspectRatio(), CONFIG.render.nearPlane, CONFIG.render.farPlane);
 }
 
 function paintSkyGradient(geometry) {
@@ -264,13 +244,7 @@ function createNextTexture() {
 }
 
 function createMapData() {
-  return loadDust2MapModel().then(function () {
-    initMapData();
-  }).catch(function (error) {
-    console.warn('Dust II model could not be loaded; using the built-in map.', error);
-    dust2MapModel = null;
-    initMapData();
-  });
+  initMapData();
 }
 
 function createLevel() {
@@ -288,7 +262,6 @@ function createWeaponView() {
   engine.weaponScene.add(ambient);
   engine.weaponScene.add(sun);
   engine.weaponScene.add(createWeaponViewModels());
-  return viewModelData.ready;
 }
 
 function createEffects() {
@@ -312,11 +285,9 @@ function createPlayer() {
 function bindEvents() {
   window.addEventListener('resize', onWindowResize);
   initInput();
-  initDeveloperConsole();
   initAudio();
   initMenu();
   initGame(engine.canvas);
-  initShowcase();
 }
 
 // ---------- события ----------
@@ -328,8 +299,6 @@ function onWindowResize() {
   resizeRenderer();
   engine.camera.aspect = getAspectRatio();
   engine.camera.updateProjectionMatrix();
-  engine.menuCamera.aspect = getAspectRatio();
-  engine.menuCamera.updateProjectionMatrix();
   engine.weaponCamera.aspect = getAspectRatio();
   engine.weaponCamera.updateProjectionMatrix();
 }
@@ -379,12 +348,6 @@ function updateDeathOverlay() {
 
 // Действия, которые работают в любом состоянии игры
 function handleGlobalActions() {
-  if (isDeveloperConsoleOpen()) {
-    return;
-  }
-  if (wasActionPressed('toggleBotsFreeze')) {
-    botSystem.isFrozen = !botSystem.isFrozen;
-  }
   if (wasActionPressed('toggleFps')) {
     toggleFpsCounter();
   }
@@ -425,17 +388,9 @@ function runFixedUpdates(delta) {
 // Сначала мир, потом сброс глубины и оружие поверх него
 function renderFrame() {
   engine.renderer.clear();
-  var renderCamera = engine.camera;
-  if (gameState.current === GAME_STATE.MENU || gameState.current === GAME_STATE.MATCH_END) {
-    engine.menuOrbit += 0.00035;
-    engine.menuCamera.position.set(Math.cos(engine.menuOrbit) * 38, 16, Math.sin(engine.menuOrbit) * 38);
-    engine.menuCamera.lookAt(0, 1.5, 0);
-    renderCamera = engine.menuCamera;
-  }
-  engine.renderer.render(engine.scene, renderCamera);
+  engine.renderer.render(engine.scene, engine.camera);
   engine.renderer.clearDepth();
   engine.renderer.render(engine.weaponScene, engine.weaponCamera);
-  renderShowcasePreview(engine.renderer);
 }
 
 // Оружие, отдача и эффекты считаются каждый кадр (а не в фиксированном шаге): нажатие кнопки не должно пропадать
@@ -443,15 +398,11 @@ function mainLoop(timestamp) {
   var realDelta = Math.max(0, (timestamp - engine.lastFrameTime) / MS_PER_SECOND);
   var logicDelta = Math.min(realDelta, CONFIG.loop.maxDelta);
   engine.lastFrameTime = timestamp;
-  if (isDeveloperConsoleOpen()) {
-    resetInputState();
-  } else {
-    handleGlobalActions();
-    applyZoomToMouseDelta();
-    updatePlayerLook();
-    runFixedUpdates(logicDelta);
-    updateWeaponSystem(logicDelta);
-  }
+  handleGlobalActions();
+  applyZoomToMouseDelta();
+  updatePlayerLook();
+  runFixedUpdates(logicDelta);
+  updateWeaponSystem(logicDelta);
   updateEffects(logicDelta);
   updateMenu();
   updateDeathOverlay();
